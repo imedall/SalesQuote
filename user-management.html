@@ -233,69 +233,67 @@
     </div>
 
     <div class="container">
-        <div id="accessDenied" style="display: none;" class="card">
-            <h2>Access Denied</h2>
-            <p style="color: #6b7280; margin-bottom: 20px;">You do not have permission to access this page. Only administrators can manage users.</p>
-            <button class="btn btn-primary" onclick="goToSalesQuote()">Go to Sales Quotes</button>
+        <!-- Create New User Card -->
+        <div class="card">
+            <h2>Create New User</h2>
+            <div id="createMessage" class="message"></div>
+            <form id="createUserForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userName">Full Name</label>
+                        <input type="text" id="userName" required placeholder="John Doe">
+                    </div>
+                    <div class="form-group">
+                        <label for="userEmail">Email Address</label>
+                        <input type="email" id="userEmail" required placeholder="john@example.com">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="userPassword">Password</label>
+                        <input type="password" id="userPassword" required placeholder="Minimum 8 characters">
+                    </div>
+                    <div class="form-group">
+                        <label for="userRole">Role</label>
+                        <select id="userRole" required>
+                            <option value="">Select Role</option>
+                            <option value="Admin">Admin</option>
+                            <option value="Sales Rep">Sales Rep</option>
+                            <option value="Viewer">Viewer</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="adminPassword">Your Admin Password (Required)</label>
+                    <input type="password" id="adminPassword" required placeholder="Enter your password to create user">
+                </div>
+                <button type="submit" class="btn btn-primary" id="createBtn">Create User</button>
+            </form>
         </div>
 
-        <div id="mainContent" style="display: none;">
-            <div class="card">
-                <h2>Create New User</h2>
-                <div id="createMessage" class="message"></div>
-                <form id="createUserForm">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="userName">Full Name</label>
-                            <input type="text" id="userName" required placeholder="John Doe">
-                        </div>
-                        <div class="form-group">
-                            <label for="userEmail">Email Address</label>
-                            <input type="email" id="userEmail" required placeholder="user@imedall.com">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="userPassword">Temporary Password</label>
-                            <input type="password" id="userPassword" required placeholder="Min. 8 characters">
-                        </div>
-                        <div class="form-group">
-                            <label for="userRole">Role</label>
-                            <select id="userRole" required>
-                                <option value="">Select Role...</option>
-                                <option value="Admin">Admin (Full Access)</option>
-                                <option value="Sales Rep">Sales Rep (Can Edit Own Quotes)</option>
-                                <option value="Viewer">Viewer (Read Only)</option>
-                            </select>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary" id="createBtn" style="width: auto;">Create User</button>
-                </form>
-            </div>
-
-            <div class="card">
-                <h2>All Users</h2>
-                <div id="usersMessage" class="message"></div>
-                <div id="usersLoading" class="loading">Loading users...</div>
-                <table id="usersTable" style="display: none;">
-                    <thead>
-                        <tr>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Role</th>
-                            <th>Status</th>
-                            <th>Email Verified</th>
-                            <th>Created</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTableBody"></tbody>
-                </table>
-            </div>
+        <!-- Users List Card -->
+        <div class="card">
+            <h2>All Users</h2>
+            <div id="usersMessage" class="message"></div>
+            <div id="usersLoading" class="loading">Loading users...</div>
+            <table id="usersTable" style="display: none;">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Verified</th>
+                        <th>Created</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                </tbody>
+            </table>
         </div>
     </div>
-
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
 
@@ -316,51 +314,54 @@
         const database = firebase.database();
 
         let currentUser = null;
-        let currentUserData = null;
 
-        // Check authentication and authorization
+        // Check authentication and permissions
         firebase.auth().onAuthStateChanged(async (user) => {
-            if (!user || !user.emailVerified) {
+            if (!user) {
+                // Not logged in
                 window.location.href = 'login.html';
                 return;
             }
 
-            currentUser = user;
+            // Check if user profile exists and has admin role
+            try {
+                const userSnapshot = await database.ref(`users/${user.uid}`).once('value');
+                const userData = userSnapshot.val();
 
-            // Get user data
-            const userSnapshot = await database.ref(`users/${user.uid}`).once('value');
-            currentUserData = userSnapshot.val();
+                if (!userData) {
+                    alert('User profile not found. Please contact administrator.');
+                    await auth.signOut();
+                    window.location.href = 'login.html';
+                    return;
+                }
 
-            if (!currentUserData || currentUserData.status !== 'active') {
-                await auth.signOut();
+                if (userData.role !== 'Admin') {
+                    alert('Access denied. This page is for administrators only.');
+                    window.location.href = 'sales-quote.html';
+                    return;
+                }
+
+                if (userData.status !== 'active') {
+                    alert('Your account has been disabled. Please contact an administrator.');
+                    await auth.signOut();
+                    window.location.href = 'login.html';
+                    return;
+                }
+
+                // User is authenticated and authorized
+                currentUser = user;
+                document.getElementById('currentUserName').textContent = userData.name;
+
+                // Load users
+                loadUsers();
+
+            } catch (error) {
+                console.error('Error checking user permissions:', error);
+                alert('Error loading user data. Please try again.');
                 window.location.href = 'login.html';
-                return;
             }
-
-            // Check if user is admin
-            if (currentUserData.role !== 'Admin') {
-                document.getElementById('accessDenied').style.display = 'block';
-                return;
-            }
-
-            // Show main content
-            document.getElementById('currentUserName').textContent = currentUserData.name;
-            document.getElementById('mainContent').style.display = 'block';
-
-            // Load users
-            loadUsers();
-
-            // Log activity
-            database.ref('activityLog').push({
-                userId: user.uid,
-                userEmail: user.email,
-                action: 'accessed_user_management',
-                timestamp: Date.now(),
-                date: new Date().toISOString()
-            });
         });
-
-        // Create user form handler
+        // Handle create user form
         document.getElementById('createUserForm').addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -368,12 +369,21 @@
             const email = document.getElementById('userEmail').value.trim();
             const password = document.getElementById('userPassword').value;
             const role = document.getElementById('userRole').value;
+            const adminPassword = document.getElementById('adminPassword').value;
             const createBtn = document.getElementById('createBtn');
             const messageDiv = document.getElementById('createMessage');
 
+            // Validation
+            if (!role) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Please select a role.';
+                messageDiv.style.display = 'block';
+                return;
+            }
+
             if (password.length < 8) {
                 messageDiv.className = 'message error';
-                messageDiv.textContent = 'Password must be at least 8 characters long.';
+                messageDiv.textContent = 'Password must be at least 8 characters.';
                 messageDiv.style.display = 'block';
                 return;
             }
@@ -382,19 +392,12 @@
             createBtn.textContent = 'Creating...';
             messageDiv.style.display = 'none';
 
-            try {
-                // Note: Creating users requires Firebase Admin SDK or Cloud Functions
-                // For now, we'll use a workaround: create user via client SDK
-                // then sign back in as admin
+            // Save admin credentials
+            const adminEmail = currentUser.email;
 
-                // Save current user
-                const adminEmail = currentUser.email;
-                const adminPassword = prompt('Please enter YOUR password to create this user:');
-                if (!adminPassword) {
-                    createBtn.disabled = false;
-                    createBtn.textContent = 'Create User';
-                    return;
-                }
+            try {
+                // Verify admin password
+                await auth.signInWithEmailAndPassword(adminEmail, adminPassword);
 
                 // Create new user
                 const newUserCredential = await auth.createUserWithEmailAndPassword(email, password);
@@ -470,7 +473,6 @@
             createBtn.disabled = false;
             createBtn.textContent = 'Create User';
         });
-
         // Load all users
         async function loadUsers() {
             const loadingDiv = document.getElementById('usersLoading');
