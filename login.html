@@ -198,7 +198,6 @@
             <a href="admin-setup.html">First time? Set up admin account</a>
         </div>
     </div>
-
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
@@ -228,7 +227,6 @@
                 window.location.href = 'sales-quote.html';
             }
         });
-
         // Login form handler
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
@@ -319,7 +317,6 @@
                 loginBtn.textContent = 'Sign In';
             }
         });
-
         // Resend verification email
         async function resendVerificationEmail() {
             if (!lastFailedEmail) {
