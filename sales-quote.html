@@ -216,9 +216,8 @@
         <div class="main-card">
             <header class="card-header">
                 <div class="user-info-header">
-                    <span class="user-name" id="userName">Loading...</span>
-                    <span class="user-role-badge" id="userRole">...</span>
-                    <button class="header-button" id="usersButton" onclick="window.location.href='user-management.html'" style="display: none;">Users</button>
+                    <span class="user-name" id="currentUserName">Loading...</span>
+                    <span class="user-role-badge" id="currentUserRole"></span>
                     <button class="header-button" onclick="handleLogout()">Logout</button>
                 </div>
                 <h1>iMED ALL inc.</h1>
@@ -250,1995 +249,557 @@
 
                 <hr class="divider">
 
-                <section class="quote-form">
-                    <h3>Create New Quote</h3>
-                    <form id="newQuoteForm">
+                <section>
+                    <h3>Customer & Quote Information</h3>
+                    <form id="quoteForm">
                         <div class="form-group">
-                            <label for="customer">Sold:</label>
-                            <select id="customer" name="customer" required>
-                                <option value="" disabled selected>Loading Customers...</option>
+                            <label for="customer">Sold To (Select from List):</label>
+                            <select id="customer" required>
+                                <option value="" disabled selected>Loading customers...</option>
                             </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="qnum">Quote Number:</label>
+                            <input type="text" id="qnum" readonly style="background-color: #f9fafb; cursor: not-allowed;">
                         </div>
                         <div class="price-group">
                             <div class="form-group">
-                                <label for="exchangePrice">Exchange Quote ($):</label>
-                                <input type="text" id="exchangePrice" name="exchangePrice" placeholder="e.g., 1,500.00">
+                                <label for="cprice">Cost Price (CAD):</label>
+                                <input type="text" id="cprice" inputmode="decimal" placeholder="0.00" required>
                             </div>
                             <div class="form-group">
-                                <label for="outrightPrice">Outright Quote ($):</label>
-                                <input type="text" id="outrightPrice" name="outrightPrice" placeholder="e.g., 2,000.00">
+                                <label for="sprice">Sell Price (CAD):</label>
+                                <input type="text" id="sprice" inputmode="decimal" placeholder="0.00" required>
                             </div>
                         </div>
-                        
                         <div class="form-group">
-                            <label for="warrantyDays">Warranty (Days):</label>
-                            <select id="warrantyDays" name="warrantyDays" onchange="handleWarrantyChange()">
-                                <option value="30">30 Days</option>
-                                <option value="60">60 Days</option>
-                                <option value="90" selected>90 Days</option>
-                                <option value="custom">Other (Custom)</option>
-                            </select>
-                        </div>
-                        <div class="form-group" id="customWarrantyGroup" style="display: none;">
-                            <label for="customWarranty">Custom Warranty Days:</label>
-                            <input type="number" id="customWarranty" placeholder="Enter days" min="1">
-                        </div>
-
-                        <div class="form-group">
-                            <label for="status">Status:</label>
-                            <select id="status" name="status" required>
-                                <option value="Quoted">Quoted</option>
-                                <option value="Sold at Quoted Price Outright">Sold at Quoted Price Outright</option>
-                                <option value="Sold at Quoted Price Exchange">Sold at Quoted Price Exchange</option>
-                                <option value="Lost Sale">Lost Sale</option>
-                                <option value="No Stock">No Stock</option>
+                            <label for="warranty">Warranty:</label>
+                            <select id="warranty" required>
+                                <option value="" disabled selected>Select warranty period</option>
+                                <option value="No Warranty">No Warranty</option>
+                                <option value="30 Days">30 Days</option>
+                                <option value="90 Days">90 Days</option>
+                                <option value="6 Months">6 Months</option>
+                                <option value="1 Year">1 Year</option>
+                                <option value="2 Years">2 Years</option>
+                                <option value="3 Years">3 Years</option>
+                                <option value="Lifetime">Lifetime</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="notes">Notes:</label>
-                            <textarea id="notes" name="notes" rows="3" placeholder="Add any internal notes for this quote..."></textarea>
+                            <label for="notes">Notes (Optional):</label>
+                            <textarea id="notes" rows="3" placeholder="Add any additional notes here..."></textarea>
                         </div>
-                        <button type="submit" id="submitButton">Save Quote</button>
+                        <button type="submit" id="submitBtn">Submit Quote</button>
+                        <div id="formMessage"></div>
                     </form>
-                    <p id="formMessage"></p>
                 </section>
-                
+
                 <hr class="divider">
 
-                <section class="quote-history">
+                <section id="searchSection">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-                        <h3 style="margin-bottom: 0;">Quote History for this Part</h3>
-                        <select id="historyTimeFilter" style="width: auto; padding: 8px 12px;" onchange="handleHistoryTimeFilterChange(event)">
-                            <option value="month">Last Month</option>
-                            <option value="6months">Last 6 Months</option>
-                            <option value="year">Last Year</option>
-                            <option value="all" selected>All Time</option>
-                        </select>
+                        <h3 style="margin: 0;">Search Quote History</h3>
+                        <button onclick="toggleSearchSection()" style="width: auto; padding: 8px 16px; font-size: 14px;">
+                            Toggle Search
+                        </button>
                     </div>
-                    <div class="history-container">
-                        <table id="historyTable">
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Sold</th>
-                                    <th class="price-cell">Exchange</th>
-                                    <th class="price-cell">Outright</th>
-                                    <th class="status-cell">Status</th>
-                                    <th>Warranty</th>
-                                    <th>Notes</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="historyBody"></tbody>
-                        </table>
-                        <p id="noHistoryMessage" class="no-history-message">No quote history found for this part.</p>
-                    </div>
-                </section>
-
-                <hr class="divider">
-
-                <section class="searchable-quote-history">
-                    <h3 onclick="toggleSearchSection()" style="cursor: pointer; display: flex; justify-content: space-between; align-items: center;">
-                        <span>Search All Quotes</span>
-                        <span id="searchToggleIcon" style="font-size: 20px;">▼</span>
-                    </h3>
-                    <div id="searchQuotesContent" style="display: block;">
-
+                    <div id="searchContent">
                         <div class="form-group">
-                            <input type="search" id="quoteSearchInput" placeholder="Search by PN, Sold To, Item Name, or Status...">
+                            <label for="searchInput">Search by Part Number or Item Name:</label>
+                            <input type="search" id="searchInput" placeholder="Type to search...">
                         </div>
                         
-                        <div class="form-group" style="display: flex; justify-content: space-between; align-items: center; gap: 16px; flex-wrap: wrap;">
-                            <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap; flex: 1;">
-                                <label for="resultsLimit" style="margin: 0; font-size: 14px;">Show:</label>
-                                <select id="resultsLimit" style="width: auto; padding: 8px 12px;">
-                                    <option value="10" selected>Recent</option>
-                                    <option value="today">Today</option>
-                                    <option value="yesterday">Yesterday</option>
-                                    <option value="week">Last Week</option>
-                                    <option value="month">Last Month</option>
-                                    <option value="all">All Quotes</option>
-                                </select>
-                            </div>
-                        <div style="display: flex; gap: 8px;">
-    <button id="copySelectedButton" type="button" style="width: auto; padding: 10px 24px; font-size: 14px;" disabled onclick="copySelectedQuotes()">
-        Copy (<span id="copyCount">0</span>)
-    </button>
-    <button id="generatePdfButton" type="button" style="width: auto; padding: 10px 24px; font-size: 14px;" disabled onclick="generatePDF()">
-        PDF (<span id="selectedCount">0</span>)
-    </button>
-    <button id="createBulkOrdersButton" type="button" style="width: auto; padding: 10px 24px; font-size: 14px; background: linear-gradient(135deg, #f39237 0%, #d17a2a 100%);" disabled onclick="createBulkOrders()">
-        Create Orders (<span id="bulkOrderCount">0</span>)
-    </button>
-</div>
+                        <div class="filter-buttons">
+                            <button class="filter-btn active" data-filter="all" onclick="handleTimeFilter('all')">All Time</button>
+                            <button class="filter-btn" data-filter="today" onclick="handleTimeFilter('today')">Today</button>
+                            <button class="filter-btn" data-filter="week" onclick="handleTimeFilter('week')">This Week</button>
+                            <button class="filter-btn" data-filter="month" onclick="handleTimeFilter('month')">This Month</button>
+                            <button class="filter-btn" data-filter="year" onclick="handleTimeFilter('year')">This Year</button>
                         </div>
+
                         <div class="history-container">
                             <table id="searchHistoryTable">
                                 <thead>
                                     <tr>
-                                        <th style="width: 40px;">
-                                            <input type="checkbox" id="selectAllCheckbox" style="cursor: pointer;">
-                                        </th>
                                         <th>Date</th>
-                                        <th>PN</th>
-                                        <th>Sold</th>
-                                        <th class="price-cell">Exchange</th>
-                                        <th class="price-cell">Outright</th>
+                                        <th>Item Name</th>
+                                        <th>Part Number</th>
+                                        <th class="price-cell">Cost (CAD)</th>
+                                        <th class="price-cell">Sell (CAD)</th>
                                         <th class="status-cell">Status</th>
-                                        <th>Warranty</th>
-                                        <th>Notes</th>
                                         <th>Actions</th>
                                     </tr>
                                 </thead>
-                                <tbody id="searchHistoryBody"></tbody>
+                                <tbody id="searchHistoryBody">
+                                    <tr><td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">Search for an item to see history</td></tr>
+                                </tbody>
                             </table>
-                            <p id="noSearchResultsMessage" class="no-history-message">Type in the search bar to find quotes.</p>
                         </div>
                     </div>
                 </section>
 
                 <hr class="divider">
-                <section class="price-history-section">
-                    <h3>Price History by Part Number</h3>
-                    <div class="form-group" style="display: flex; gap: 12px; align-items: flex-end;">
-                        <div style="flex: 1;">
-                            <label for="priceHistorySearchInput">Search Part Number:</label>
-                            <input type="text" id="priceHistorySearchInput" placeholder="Enter part number...">
+
+                <section>
+                    <h3>Quote History</h3>
+                    
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px; align-items: center; flex-wrap: wrap;">
+                        <div style="flex: 1; min-width: 200px;">
+                            <label for="historyTimeFilter" style="margin-bottom: 4px;">Filter by Time:</label>
+                            <select id="historyTimeFilter" style="width: 100%;">
+                                <option value="all">All Time</option>
+                                <option value="today">Today</option>
+                                <option value="week">This Week</option>
+                                <option value="month" selected>This Month</option>
+                                <option value="year">This Year</option>
+                            </select>
                         </div>
-                        <button type="button" onclick="handlePriceHistorySearch()" style="width: auto; padding: 12px 32px;">
-                            Search
+                        <div style="flex: 1; min-width: 200px;">
+                            <label for="resultsLimit" style="margin-bottom: 4px;">Results to Show:</label>
+                            <select id="resultsLimit" style="width: 100%;">
+                                <option value="25">25 results</option>
+                                <option value="50" selected>50 results</option>
+                                <option value="100">100 results</option>
+                                <option value="all">All results</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                        <button onclick="copySelectedQuotes()" style="width: auto; padding: 10px 20px; font-size: 14px;">
+                            Copy Selected Quotes
+                        </button>
+                        <button onclick="createBulkOrders()" style="width: auto; padding: 10px 20px; font-size: 14px; background: #f39237;">
+                            Create Bulk Orders
                         </button>
                     </div>
-                    <div class="history-container" id="priceHistoryContainer">
-                        <canvas id="priceHistoryChart"></canvas>
-                        <p id="noPriceHistoryMessage" class="no-history-message" style="display: none;">
-                            No sales history found for this part number.
-                        </p>
+
+                    <div class="history-container">
+                        <table id="historyTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 40px;">
+                                        <input type="checkbox" id="selectAll" onchange="handleSelectAll()" 
+                                               style="width: 18px; height: 18px; cursor: pointer;">
+                                    </th>
+                                    <th>Date</th>
+                                    <th>Quote #</th>
+                                    <th>Item Name</th>
+                                    <th>Part Number</th>
+                                    <th>Customer</th>
+                                    <th class="price-cell">Cost (CAD)</th>
+                                    <th class="price-cell">Sell (CAD)</th>
+                                    <th>Warranty</th>
+                                    <th class="status-cell">Status</th>
+                                    <th class="notes-cell">Notes</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="historyBody">
+                                <tr><td colspan="12" style="text-align: center; padding: 20px; color: #9ca3af;">Loading history...</td></tr>
+                            </tbody>
+                        </table>
+                        <div id="noHistoryMessage" class="no-history-message">
+                            No quotes found for this time period.
+                        </div>
+                    </div>
+                    <div style="margin-top: 12px; color: #6b7280; font-size: 14px; text-align: center;" id="selectedCount">
+                        0 quotes selected
                     </div>
                 </section>
             </div>
         </div>
     </div>
-
+    <!-- Edit Quote Modal -->
     <div id="editModal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <h4>Edit Quote</h4>
-                <p id="editItemInfo" style="margin-top: 8px; font-size: 14px; color: #6b7280; font-weight: normal;"></p>
             </div>
             <div class="modal-body">
-                <form id="editQuoteForm">
+                <form id="editForm">
                     <input type="hidden" id="editQuoteId">
+                    
                     <div class="form-group">
-                        <label for="editItemName">Item Name:</label>
-                        <input type="text" id="editItemName" name="itemName" required>
+                        <label>Item Name:</label>
+                        <input type="text" id="editItemName" readonly style="background-color: #f9fafb;">
                     </div>
-<div class="form-group">
-    <label for="editDate">Quote Date:</label>
-    <input type="date" id="editDate" name="date" required>
-</div>
+                    
                     <div class="form-group">
-                        <label for="editPartNumber">Part Number:</label>
-                        <input type="text" id="editPartNumber" name="partNumber" required>
+                        <label>Part Number:</label>
+                        <input type="text" id="editPartNumber" readonly style="background-color: #f9fafb;">
                     </div>
+                    
                     <div class="form-group">
-                        <label for="editSoldTo">Sold:</label>
-                        <select id="editSoldTo" name="sold" required></select>
+                        <label for="editCustomer">Customer:</label>
+                        <input type="text" id="editCustomer" required>
                     </div>
+                    
                     <div class="price-group">
                         <div class="form-group">
-                            <label for="editExchangePrice">Exchange Quote ($):</label>
-                            <input type="text" id="editExchangePrice" name="exchangePrice">
+                            <label for="editCostPrice">Cost Price (CAD):</label>
+                            <input type="text" id="editCostPrice" inputmode="decimal" required>
                         </div>
                         <div class="form-group">
-                            <label for="editOutrightPrice">Outright Quote ($):</label>
-                            <input type="text" id="editOutrightPrice" name="outrightPrice">
+                            <label for="editSellPrice">Sell Price (CAD):</label>
+                            <input type="text" id="editSellPrice" inputmode="decimal" required>
                         </div>
                     </div>
+                    
+                    <div class="form-group">
+                        <label for="editWarranty">Warranty:</label>
+                        <select id="editWarranty" required>
+                            <option value="No Warranty">No Warranty</option>
+                            <option value="30 Days">30 Days</option>
+                            <option value="90 Days">90 Days</option>
+                            <option value="6 Months">6 Months</option>
+                            <option value="1 Year">1 Year</option>
+                            <option value="2 Years">2 Years</option>
+                            <option value="3 Years">3 Years</option>
+                            <option value="Lifetime">Lifetime</option>
+                        </select>
+                    </div>
+                    
                     <div class="form-group">
                         <label for="editStatus">Status:</label>
-                        <select id="editStatus" name="status" required>
+                        <select id="editStatus" required>
                             <option value="Quoted">Quoted</option>
-                            <option value="Sold at Quoted Price Outright">Sold at Quoted Price Outright</option>
-                            <option value="Sold at Quoted Price Exchange">Sold at Quoted Price Exchange</option>
+                            <option value="Sold">Sold</option>
                             <option value="Lost Sale">Lost Sale</option>
-                            <option value="No Stock">No Stock</option>
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="editWarrantyDays">Warranty (Days):</label>
-                        <select id="editWarrantyDays" name="warrantyDays" onchange="handleEditWarrantyChange()">
-                            <option value="30">30 Days</option>
-                            <option value="60">60 Days</option>
-                            <option value="90">90 Days</option>
-                            <option value="custom">Other (Custom)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="editCustomWarrantyGroup" style="display: none;">
-                        <label for="editCustomWarranty">Custom Warranty Days:</label>
-                        <input type="number" id="editCustomWarranty" placeholder="Enter days" min="1">
-                    </div>
+                    
                     <div class="form-group">
                         <label for="editNotes">Notes:</label>
-                        <textarea id="editNotes" name="notes" rows="4"></textarea>
+                        <textarea id="editNotes" rows="3"></textarea>
                     </div>
                 </form>
             </div>
             <div class="modal-footer">
-                <button type="button" id="deleteQuoteButton" class="btn-danger">Delete</button>
-                <div>
-                    <button type="button" id="cancelEditButton" class="btn-secondary">Cancel</button>
-                    <button type="button" id="saveEditButton" class="btn-primary">Save Changes</button>
-                </div>
+                <button class="btn-secondary" onclick="closeEditModal()">Cancel</button>
+                <button class="btn-danger" onclick="handleDeleteQuote()">Delete</button>
+                <button class="btn-primary" onclick="handleEditFormSubmit()">Save Changes</button>
             </div>
         </div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-    
+
     <script>
+const APPSHEET_CONFIG = {
+    APP_ID: 'a9c07aae-2e81-461c-aa15-5e75cffd9e5f',
+    API_KEY: 'V2-4Lggx-z6RgL-DchS5-2yBot-QGoeI-4zkBN-zF5ud-OarOy',
+    TABLE_NAME: 'Sold List',
+    CUSTOMER_COLUMN: 'Sold To',
+    ORDERS_TABLE: 'Orders'
+};
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCe0u6B6qA9y6xvSR_jbY1Do-ljPKy5Lu8",
-  authDomain: "imed-sales-quote.firebaseapp.com",
-  databaseURL: "https://imed-sales-quote-default-rtdb.firebaseio.com",
-  projectId: "imed-sales-quote",
-  storageBucket: "imed-sales-quote.firebasestorage.app",
-  messagingSenderId: "830326754595",
-  appId: "1:830326754595:web:ca03272749599736fad096",
-  measurementId: "G-6TCTDFX5PL"
+    apiKey: "AIzaSyCe0u6B6qA9y6xvSR_jbY1Do-ljPKy5Lu8",
+    authDomain: "imed-sales-quote.firebaseapp.com",
+    databaseURL: "https://imed-sales-quote-default-rtdb.firebaseio.com",
+    projectId: "imed-sales-quote",
+    storageBucket: "imed-sales-quote.firebasestorage.app",
+    messagingSenderId: "830326754595",
+    appId: "1:830326754595:web:ca03272749599736fad096",
+    measurementId: "G-6TCTDFX5PL"
 };
 
-const APPSHEET_CONFIG = {
-    API_KEY: "V2-p5nLK-I6suM-yAVyE-bhP5n-TaFuq-uDBbY-vjvr0-8RoEu",
-    APP_ID: "876dcdc3-0570-427f-9be0-53367d74bf69",
-    TABLE_NAME: "Siemens Stock",
-    CUSTOMER_COLUMN: "Sold",
-    ORDERS_TABLE: "Orders"
-};
-
-let allQuotesCache = [];
-let soldListCache = [];
-let salesHistoryChart;
-let priceHistoryChart;
-let currentHistoryListener = null;
-let selectedQuotes = new Set();
-let currentResultsLimit = 10;
-let selectedWarrantyDays = 60;
-let customWarrantyDays = '';
-let currentTimeFilter = 'all';
-let currentHistoryTimeFilter = 'all';
-
-// Authentication variables
-let currentUser = null;
-let currentUserData = null;
-const auth = firebase.auth();
- 
 firebase.initializeApp(firebaseConfig);
 const database = firebase.database();
+const auth = firebase.auth();
 
-// Authentication state observer - MUST BE FIRST
+let currentUser = null;
+let currentUserData = null;
+
+// Authentication check
 firebase.auth().onAuthStateChanged(async (user) => {
     if (!user) {
-        // Not logged in - redirect to login
         window.location.href = 'login.html';
         return;
     }
 
-    // Check if email is verified
-    if (!user.emailVerified) {
-        alert('Please verify your email before accessing the system. Check your inbox for the verification link.');
-        firebase.auth().signOut();
-        window.location.href = 'login.html';
-        return;
-    }
-
-    currentUser = user;
-
-    // Load user data from database
     try {
         const userSnapshot = await database.ref(`users/${user.uid}`).once('value');
-        currentUserData = userSnapshot.val();
+        const userData = userSnapshot.val();
 
-        if (!currentUserData) {
-            alert('User data not found. Please contact your administrator.');
-            firebase.auth().signOut();
+        if (!userData) {
+            alert('User profile not found. Please contact administrator.');
+            await auth.signOut();
             window.location.href = 'login.html';
             return;
         }
 
-        // Check if user is active
-        if (currentUserData.status !== 'active') {
-            alert('Your account has been disabled. Please contact your administrator.');
-            firebase.auth().signOut();
+        if (userData.status !== 'active') {
+            alert('Your account has been disabled. Please contact an administrator.');
+            await auth.signOut();
             window.location.href = 'login.html';
             return;
         }
+
+        currentUser = user;
+        currentUserData = userData;
 
         // Update UI with user info
-        document.getElementById('userName').textContent = currentUserData.name;
-        document.getElementById('userRole').textContent = currentUserData.role;
-
-        // Show Users button only for admins
-        if (currentUserData.role === 'Admin') {
-            document.getElementById('usersButton').style.display = 'inline-block';
-        }
-
-        // Log login activity
-        await logActivity('login', null, `${currentUserData.name} logged in`);
+        document.getElementById('currentUserName').textContent = userData.name;
+        document.getElementById('currentUserRole').textContent = userData.role;
 
         // Initialize the page
         initializePage();
 
     } catch (error) {
-        console.error('Error loading user data:', error);
+        console.error('Error checking user:', error);
         alert('Error loading user data. Please try again.');
-        firebase.auth().signOut();
         window.location.href = 'login.html';
     }
 });
 
-// Initialize page after authentication is confirmed
-function initializePage() {
-    const urlParams = new URLSearchParams(window.location.search);
-    const initialPartNumber = urlParams.get('pn');
-    const initialItemName = urlParams.get('name');
-    
-    if (!initialPartNumber) { 
-        document.getElementById('itemName').textContent = 'N/A';
-        document.getElementById('partNumber').textContent = 'N/A';
-    } else {
-        updateMainView(initialPartNumber, initialItemName);
-    }
-    
-    fetchCustomersFromAppSheet();
-    fetchAllQuotesForSearch();
-    checkAndExpireQuotes();
-
-    document.getElementById('newQuoteForm').addEventListener('submit', handleFormSubmit);
-    document.getElementById('quoteSearchInput').addEventListener('input', (e) => filterAndDisplayQuotes(e.target.value));
-    document.getElementById('resultsLimit').addEventListener('change', handleResultsLimitChange);
-    document.getElementById('selectAllCheckbox').addEventListener('change', handleSelectAll);
-     
-    ['outrightPrice', 'exchangePrice', 'editOutrightPrice', 'editExchangePrice'].forEach(id => {
-        document.getElementById(id).addEventListener('input', handleCurrencyInput);
-        document.getElementById(id).addEventListener('blur', handleCurrencyBlur);
-    });
-
-    document.getElementById('cancelEditButton').addEventListener('click', closeEditModal);
-    document.getElementById('saveEditButton').addEventListener('click', handleEditFormSubmit);
-    document.getElementById('deleteQuoteButton').addEventListener('click', handleDeleteQuote);
-    document.getElementById('editModal').addEventListener('click', (e) => {
-        if (e.target.id === 'editModal') closeEditModal();
-    });
-
-    document.body.addEventListener('click', handleBodyClick);
-}
-
 // Logout function
-function handleLogout() {
-    if (confirm('Are you sure you want to log out?')) {
-        logActivity('logout', null, `${currentUserData.name} logged out`).then(() => {
-            firebase.auth().signOut().then(() => {
-                window.location.href = 'login.html';
-            });
-        });
+async function handleLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        try {
+            await logActivity('logout');
+            await auth.signOut();
+            window.location.href = 'login.html';
+        } catch (error) {
+            console.error('Logout error:', error);
+            alert('Error logging out. Please try again.');
+        }
     }
 }
 
-// Activity logging function
-async function logActivity(action, quoteId, description) {
-    if (!currentUser || !currentUserData) return;
+// Activity logging
+async function logActivity(action, additionalData = {}) {
+    if (!currentUser) return;
     
     try {
         await database.ref('activityLog').push({
             userId: currentUser.uid,
-            userName: currentUserData.name,
             userEmail: currentUser.email,
-            userRole: currentUserData.role,
             action: action,
-            quoteId: quoteId || null,
-            description: description,
-            timestamp: new Date().toISOString()
+            timestamp: Date.now(),
+            date: new Date().toISOString(),
+            ...additionalData
         });
     } catch (error) {
         console.error('Error logging activity:', error);
     }
 }
 
-function toggleManualEntry() {
-    const autoDetails = document.getElementById('autoItemDetails');
-    const manualDetails = document.getElementById('manualItemDetails');
-    
-    if (autoDetails.style.display === 'none') {
-        autoDetails.style.display = 'block';
-        manualDetails.style.display = 'none';
-    } else {
-        autoDetails.style.display = 'none';
-        manualDetails.style.display = 'block';
-    }
+// Initialize page
+function initializePage() {
+    const pn = new URLSearchParams(window.location.search).get('pn') || '3032450-001';
+    const itemName = new URLSearchParams(window.location.search).get('item') || 'HP 3PAR 8000 4-PORT 8GB FC ADAPTER';
+
+    document.getElementById('itemName').textContent = itemName;
+    document.getElementById('partNumber').textContent = pn;
+
+    updateHotItemBadge(pn, itemName);
+    getNextQuoteNumber();
+    fetchCustomersFromAppSheet();
+    listenForQuoteHistory();
+    fetchAllQuotesForSearch();
+
+    const cpriceInput = document.getElementById('cprice');
+    const spriceInput = document.getElementById('sprice');
+    cpriceInput.addEventListener('input', handleCurrencyInput);
+    cpriceInput.addEventListener('blur', handleCurrencyBlur);
+    spriceInput.addEventListener('input', handleCurrencyInput);
+    spriceInput.addEventListener('blur', handleCurrencyBlur);
+
+    const editCostInput = document.getElementById('editCostPrice');
+    const editSellInput = document.getElementById('editSellPrice');
+    editCostInput.addEventListener('input', handleCurrencyInput);
+    editCostInput.addEventListener('blur', handleCurrencyBlur);
+    editSellInput.addEventListener('input', handleCurrencyInput);
+    editSellInput.addEventListener('blur', handleCurrencyBlur);
+
+    document.getElementById('warranty').addEventListener('change', handleWarrantyChange);
+    document.getElementById('editWarranty').addEventListener('change', handleEditWarrantyChange);
+    document.getElementById('historyTimeFilter').addEventListener('change', handleHistoryTimeFilterChange);
+    document.getElementById('resultsLimit').addEventListener('change', handleResultsLimitChange);
+    document.getElementById('searchInput').addEventListener('input', handlePriceHistorySearch);
+    document.getElementById('quoteForm').addEventListener('submit', handleFormSubmit);
+
+    document.body.addEventListener('click', handleBodyClick);
+
+    checkAndExpireQuotes();
+    setInterval(checkAndExpireQuotes, 60 * 60 * 1000);
 }
 
-function toggleSearchSection() {
-    const content = document.getElementById('searchQuotesContent');
-    const icon = document.getElementById('searchToggleIcon');
-    
-    if (content.style.display === 'none') {
-        content.style.display = 'block';
-        icon.textContent = '▼';
-    } else {
-        content.style.display = 'none';
-        icon.textContent = '►';
+function handleCurrencyInput(e) {
+    let value = e.target.value.replace(/[^\d.]/g, '');
+    const parts = value.split('.');
+    if (parts.length > 2) {
+        value = parts[0] + '.' + parts.slice(1).join('');
     }
+    if (parts[1] && parts[1].length > 2) {
+        value = parts[0] + '.' + parts[1].substring(0, 2);
+    }
+    e.target.value = value;
 }
 
-function handleWarrantyChange() {
-    const select = document.getElementById('warrantyDays');
-    const customGroup = document.getElementById('customWarrantyGroup');
-    
-    if (select.value === 'custom') {
-        customGroup.style.display = 'block';
-        selectedWarrantyDays = null;
-    } else {
-        customGroup.style.display = 'none';
-        selectedWarrantyDays = parseInt(select.value);
-    }
-}
-
-function getWarrantyDays() {
-    const select = document.getElementById('warrantyDays');
-    if (select.value === 'custom') {
-        const customValue = document.getElementById('customWarranty').value;
-        return customValue ? parseInt(customValue) : 60;
-    }
-    return parseInt(select.value);
-}
-
-function handleEditWarrantyChange() {
-    const select = document.getElementById('editWarrantyDays');
-    const customGroup = document.getElementById('editCustomWarrantyGroup');
-    
-    if (select.value === 'custom') {
-        customGroup.style.display = 'block';
-    } else {
-        customGroup.style.display = 'none';
-    }
-}
-
-function getEditWarrantyDays() {
-    const select = document.getElementById('editWarrantyDays');
-    if (select.value === 'custom') {
-        const customValue = document.getElementById('editCustomWarranty').value;
-        return customValue ? parseInt(customValue) : 60;
-    }
-    return parseInt(select.value);
-}
-
-async function handleFormSubmit(event) {
-    event.preventDefault();
-    
-    // Permission check: Viewers cannot create quotes
-    if (currentUserData.role === 'Viewer') {
-        alert('You do not have permission to create quotes. Please contact your administrator.');
+function handleCurrencyBlur(e) {
+    let value = e.target.value.replace(/[^\d.]/g, '');
+    if (value === '' || value === '.') {
+        e.target.value = '';
         return;
     }
-    
-    const form = event.target;
-    const formData = new FormData(form);
-    
-    let pn, itemName;
-    const autoDetails = document.getElementById('autoItemDetails');
-    if (autoDetails.style.display === 'none') {
-        pn = document.getElementById('manualPartNumber').value;
-        itemName = document.getElementById('manualItemName').value;
-    } else {
-        pn = document.getElementById('partNumber').textContent;
-        itemName = document.getElementById('itemName').textContent;
-    }
-    
-    const outrightPriceValue = formData.get('outrightPrice').replace(/,/g, '');
-    const exchangePriceValue = formData.get('exchangePrice').replace(/,/g, '');
-    
-    const newQuote = {
-        pn: pn,
-        itemName: itemName,
-        sold: formData.get('customer'),
-        outrightPrice: outrightPriceValue ? parseFloat(outrightPriceValue) : null,
-        exchangePrice: exchangePriceValue ? parseFloat(exchangePriceValue) : null,
-        warrantyDays: getWarrantyDays(),
-        status: formData.get('status'),
-        notes: formData.get('notes'),
-        date: new Date().toISOString(),
-        // Ownership tracking
-        createdBy: currentUser.uid,
-        createdByEmail: currentUser.email,
-        createdByName: currentUserData.name,
-        createdAt: new Date().toISOString()
-    };
-    
-    const messageEl = document.getElementById('formMessage');
-    const submitButton = document.getElementById('submitButton');
-    submitButton.disabled = true;
-    submitButton.textContent = 'Saving...';
-    
-    try {
-        const quoteRef = await database.ref('quotes').push(newQuote);
-        
-        // Log activity
-        await logActivity('create_quote', quoteRef.key, `Created quote for ${itemName} (${pn}) - ${formData.get('customer')}`);
-        
-        messageEl.textContent = 'Quote saved successfully!';
-        messageEl.className = 'success';
-        form.reset();
-        
-        document.getElementById('warrantyDays').value = '90';
-        document.getElementById('customWarrantyGroup').style.display = 'none';
-        selectedWarrantyDays = 90;
-        
-    } catch (error) {
-        messageEl.textContent = `Error: ${error.message}`;
-        messageEl.className = 'error';
-    } finally {
-        setTimeout(() => {
-            messageEl.textContent = '';
-            messageEl.className = '';
-            submitButton.disabled = false;
-            submitButton.textContent = 'Save Quote';
-        }, 2000);
+    const num = parseFloat(value);
+    if (!isNaN(num)) {
+        e.target.value = num.toFixed(2);
     }
 }
 
 function formatPrice(price) {
-    const num = parseFloat(price);
-    if (isNaN(num)) return '—';
-    return `$${num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const num = typeof price === 'string' ? parseFloat(price) : price;
+    return isNaN(num) ? '0.00' : num.toFixed(2);
+}
+        function handleWarrantyChange() {
+    const warranty = document.getElementById('warranty').value;
+    const days = getWarrantyDays(warranty);
+    console.log(`Warranty selected: ${warranty}, Valid for ${days} days`);
 }
 
-function handleCurrencyInput(event) {
-    const input = event.target;
-    let value = input.value;
-    let cursorPosition = input.selectionStart;
-    const commasBefore = (value.substring(0, cursorPosition).match(/,/g) || []).length;
-    
-    let numericValue = value.replace(/[^0-9.]/g, '');
-    const parts = numericValue.split('.');
-    if (parts.length > 2) numericValue = parts[0] + '.' + parts.slice(1).join('');
-    
-    const [integerPart, decimalPart] = numericValue.split('.');
-    const formattedInteger = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-    
-    let finalValue = formattedInteger;
-    if (decimalPart !== undefined) finalValue += '.' + decimalPart.substring(0, 2);
-    
-    input.value = finalValue;
-    
-    const commasAfter = (input.value.substring(0, cursorPosition).match(/,/g) || []).length;
-    cursorPosition += (commasAfter - commasBefore);
-    if(cursorPosition < 0) cursorPosition = 0;
-    input.setSelectionRange(cursorPosition, cursorPosition);
+function handleEditWarrantyChange() {
+    const warranty = document.getElementById('editWarranty').value;
+    const days = getEditWarrantyDays(warranty);
+    console.log(`Edit warranty selected: ${warranty}, Valid for ${days} days`);
 }
 
-function handleCurrencyBlur(event) {
-    const input = event.target;
-    let value = input.value;
-    if (value === '') return;
-    
-    const numericValue = parseFloat(value.replace(/,/g, ''));
-    if (!isNaN(numericValue)) {
-        input.value = numericValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    } else {
-        input.value = '';
-    }
-}
-
-function handleTimeFilter(filter) {
-    currentTimeFilter = filter;
-    
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-        btn.classList.remove('active');
-    });
-    event.target.classList.add('active');
-    
-    const searchTerm = document.getElementById('quoteSearchInput').value;
-    filterAndDisplayQuotes(searchTerm);
-}
-
-function getFilteredQuotesByTime(quotes) {
-    if (currentTimeFilter === 'all') {
-        return quotes;
-    }
-    
-    const now = Date.now();
-    let cutoffDate;
-    
-    switch(currentTimeFilter) {
-        case '7days':
-            cutoffDate = now - (7 * 24 * 60 * 60 * 1000);
-            break;
-        case 'month':
-            cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-            break;
-        case 'year':
-            cutoffDate = now - (365 * 24 * 60 * 60 * 1000);
-            break;
-        default:
-            return quotes;
-    }
-    
-    return quotes.filter(quote => {
-        const quoteDate = new Date(quote.date).getTime();
-        return quoteDate >= cutoffDate;
-    });
-}
-
-function getHotItemStatus(pn) {
-    if (!pn) return null;
-    
-    const now = Date.now();
-    const oneWeekAgo = now - (7 * 24 * 60 * 60 * 1000);
-    const oneMonthAgo = now - (30 * 24 * 60 * 60 * 1000);
-    const oneYearAgo = now - (365 * 24 * 60 * 60 * 1000);
-    
-    const allQuotesForPn = allQuotesCache.filter(quote => quote.pn === pn);
-    
-    const quotesByDate = {};
-    allQuotesForPn.forEach(quote => {
-        const date = new Date(quote.date);
-        const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-        
-        if (!quotesByDate[dateKey]) {
-            quotesByDate[dateKey] = {
-                timestamp: date.getTime(),
-                count: 0
-            };
-        }
-        quotesByDate[dateKey].count++;
-    });
-    
-    const uniqueDaysInWeek = Object.values(quotesByDate).filter(day => day.timestamp >= oneWeekAgo).length;
-    const totalQuotesInMonth = allQuotesForPn.filter(q => new Date(q.date).getTime() >= oneMonthAgo).length;
-    const totalQuotesInYear = allQuotesForPn.filter(q => new Date(q.date).getTime() >= oneYearAgo).length;
-    
-    if (totalQuotesInYear >= 20) {
-        return { level: 'year', label: '🔥 Hot Item of the Year' };
-    }
-    
-    if (totalQuotesInMonth >= 10) {
-        return { level: 'month', label: '🔥 Hot Item of the Month' };
-    }
-    
-    if (uniqueDaysInWeek >= 3) {
-        return { level: 'week', label: '🔥 Hot Item of the Week' };
-    }
-    
-    return null;
-}
-
-function updateHotItemBadge(pn) {
-    const badgeContainer = document.getElementById('hotItemBadge');
-    const hotStatus = getHotItemStatus(pn);
-    
-    if (hotStatus) {
-        badgeContainer.innerHTML = `<span class="hot-item-badge">${hotStatus.label}</span>`;
-    } else {
-        badgeContainer.innerHTML = '';
-    }
-}
-
-function updateMainView(pn, itemName) {
-    document.getElementById('itemName').textContent = itemName || 'N/A';
-    document.getElementById('partNumber').textContent = pn || 'N/A';
-    
-    updateHotItemBadge(pn);
-    
-    if (currentHistoryListener) {
-        currentHistoryListener.off();
-    }
-    listenForQuoteHistory(pn);
-    
-    renderPriceHistoryChart(pn);
-    document.getElementById('priceHistorySearchInput').value = pn;
-}
-
-function renderHistoryTable(tableBody, quotes, includePn = false) {
-    tableBody.innerHTML = '';
-    
-    if (quotes.length === 0) return;
-    
-    quotes.forEach(quote => {
-        const row = tableBody.insertRow();
-        if (includePn) {
-            row.dataset.pn = quote.pn || '';
-            row.dataset.itemName = quote.itemName || '';
-        }
-        
-        const quoteData = JSON.stringify(quote).replace(/'/g, "&apos;");
-        const isChecked = selectedQuotes.has(quote.id);
-        
-        // Permission check: Can user edit this quote?
-        const canEdit = currentUserData.role === 'Admin' || 
-                       (currentUserData.role === 'Sales Rep' && quote.createdBy === currentUser.uid);
-        const canView = true; // Everyone can view
-        
-        // Show edit button only if user has permission
-        const editButton = canEdit ? `
-            <button class="action-button" data-action="edit-quote" data-quote='${quoteData}' title="Edit">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931Zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0 1 15.75 21H5.25A2.25 2.25 0 0 1 3 18.75V8.25A2.25 2.25 0 0 1 5.25 6H10" /></svg>
-            </button>` : '';
-        
-        let cells = `
-            ${includePn ? `<td><input type="checkbox" class="quote-checkbox" data-quote-id="${quote.id}" ${isChecked ? 'checked' : ''} style="cursor: pointer;"></td>` : ''}
-            <td>${new Date(quote.date).toLocaleDateString()}</td>
-            ${includePn ? `<td>${quote.pn || 'N/A'}</td>` : ''}
-            <td>${quote.sold || 'N/A'}</td>
-            <td class="price-cell">${formatPrice(quote.exchangePrice)}</td>
-            <td class="price-cell">${formatPrice(quote.outrightPrice)}</td>
-            <td class="status-cell"><select class="status-select" onchange="handleStatusChange(event, '${quote.id}')">
-                <option value="Quoted" ${quote.status === 'Quoted' ? 'selected' : ''}>Quoted</option>
-                <option value="Sold at Quoted Price Outright" ${quote.status === 'Sold at Quoted Price Outright' ? 'selected' : ''}>Sold Outright</option>
-                <option value="Sold at Quoted Price Exchange" ${quote.status === 'Sold at Quoted Price Exchange' ? 'selected' : ''}>Sold Exchange</option>
-                <option value="Lost Sale" ${quote.status === 'Lost Sale' ? 'selected' : ''}>Lost Sale</option>
-                <option value="No Stock" ${quote.status === 'No Stock' ? 'selected' : ''}>No Stock</option>
-            </select></td>
-            <td>${quote.warrantyDays || 90} days</td>
-            <td class="notes-cell">
-                ${quote.notes ? `<button data-action="view-notes" data-quote='${quoteData}'>View</button>` : '—'}
-            </td>
-            <td style="white-space: nowrap;">
-                ${editButton}
-                <button class="action-button create-order-btn" data-action="create-order" data-quote='${quoteData}' title="Create Order in AppSheet">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                    </svg>
-                </button>
-            </td>
-        `;
-        row.innerHTML = cells;
-    });
-    
-    if (includePn) {
-        document.querySelectorAll('.quote-checkbox').forEach(checkbox => {
-            checkbox.addEventListener('change', handleCheckboxChange);
-        });
-    }
-}
-
-async function createOrderFromQuote(quote) {
-    const confirmMessage = `Create order in AppSheet for:
-
-Customer: ${quote.sold}
-Part: ${quote.itemName} (${quote.pn})
-Outright: ${formatPrice(quote.outrightPrice)}
-Exchange: ${formatPrice(quote.exchangePrice)}
-Warranty: ${quote.warrantyDays || 60} days
-${quote.notes ? `Notes: ${quote.notes}` : ''}
-
-Continue?`;
-    
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-    
-    const loadingMessage = document.createElement('div');
-    loadingMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2d7a7f; color: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000; font-size: 14px;';
-    loadingMessage.textContent = 'Creating order in AppSheet...';
-    document.body.appendChild(loadingMessage);
-    
-    try {
-        const outrightPrice = quote.outrightPrice ? parseFloat(quote.outrightPrice) : null;
-        const exchangePrice = quote.exchangePrice ? parseFloat(quote.exchangePrice) : null;
-        
-        if (!quote.sold) {
-            throw new Error('Customer name is missing from quote');
-        }
-        
-        if (!outrightPrice && !exchangePrice) {
-            throw new Error('No price information in quote');
-        }
-        
-        let orderType = 'Sales';
-        const orderRow = {
-            "Order Num": await getNextOrderNumber(),
-            "Date": new Date().toISOString().split('T')[0],
-            "Customer": quote.sold,
-            "Pn": quote.pn || '',
-            "Status": "Draft"
-        };
-        
-        if (quote.status === 'Sold at Quoted Price Outright') {
-            orderType = 'Sales';
-            if (outrightPrice && outrightPrice > 0) {
-                orderRow["Price Outright"] = outrightPrice;
-            }
-        } else if (quote.status === 'Sold at Quoted Price Exchange') {
-            orderType = 'Exchange';
-            if (exchangePrice && exchangePrice > 0) {
-                orderRow["Price Exchange"] = exchangePrice;
-            }
-        } else {
-            if (exchangePrice && exchangePrice > 0) {
-                orderType = 'Exchange';
-                orderRow["Price Exchange"] = exchangePrice;
-            }
-            if (outrightPrice && outrightPrice > 0) {
-                if (!orderRow["Price Exchange"]) {
-                    orderType = 'Sales';
-                }
-                orderRow["Price Outright"] = outrightPrice;
-            }
-        }
-        
-        orderRow["Type"] = orderType;
-        
-        if (quote.warrantyDays) {
-            orderRow["Warranty"] = `${quote.warrantyDays} days`;
-        }
-        
-        if (quote.notes) {
-            orderRow["Notes"] = quote.notes;
-        }
-        
-        const orderData = {
-            "Action": "Add",
-            "Properties": {
-                "Locale": "en-US"
-            },
-            "Rows": [orderRow]
-        };
-        
-        const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
-        const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
-        
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ApplicationAccessKey': APPSHEET_CONFIG.API_KEY
-            },
-            body: JSON.stringify(orderData)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`AppSheet API Error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        console.log('Order created from quote:', result);
-        
-        loadingMessage.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
-        loadingMessage.innerHTML = `
-            ✓ Order ${orderRow["Order Num"]} Created!<br>
-            <span style="font-size: 12px; opacity: 0.9;">Open AppSheet to select item & add quantity</span>
-        `;
-        
-        setTimeout(() => {
-            document.body.removeChild(loadingMessage);
-        }, 5000);
-        
-    } catch (error) {
-        console.error('Error creating order from quote:', error);
-        
-        loadingMessage.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-        loadingMessage.innerHTML = `
-            ✗ Failed to create order<br>
-            <span style="font-size: 12px;">${error.message}</span>
-        `;
-        
-        setTimeout(() => {
-            document.body.removeChild(loadingMessage);
-        }, 5000);
-    }
-}
-
-async function createBulkOrders() {
-    if (selectedQuotes.size === 0) {
-        alert('Please select at least one quote to create orders.');
-        return;
-    }
-    
-    const selected = allQuotesCache.filter(q => selectedQuotes.has(q.id));
-    
-    // Normalize customer names (trim whitespace, convert to lowercase)
-    const customers = new Set(
-        selected.map(q => (q.sold || '').trim().toLowerCase())
-    );
-    
-    if (customers.size > 1) {
-        alert('Cannot create bulk order. All selected quotes must be for the same customer.\n\nPlease check only quotes for one customer.');
-        return;
-    }
-    
-    const customer = selected[0].sold;
-    const confirmMessage = `Create ${selected.length} orders in AppSheet for customer: ${customer}?\n\nAll orders will share the same Order Number.`;
-    
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-    
-    const loadingMessage = document.createElement('div');
-    loadingMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2d7a7f; color: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000; font-size: 14px;';
-    loadingMessage.textContent = `Creating ${selected.length} orders...`;
-    document.body.appendChild(loadingMessage);
-    
-    try {
-        const sharedOrderNum = await getNextOrderNumber();
-        const orderRows = [];
-        
-        for (const quote of selected) {
-            const outrightPrice = quote.outrightPrice ? parseFloat(quote.outrightPrice) : null;
-            const exchangePrice = quote.exchangePrice ? parseFloat(quote.exchangePrice) : null;
-            
-            if (!quote.sold) continue;
-            if (!outrightPrice && !exchangePrice) continue;
-            
-            let orderType = 'Sales';
-            const orderRow = {
-                "Order Num": sharedOrderNum,
-                "Date": new Date().toISOString().split('T')[0],
-                "Customer": quote.sold,
-                "Pn": quote.pn || '',
-                "Status": "Draft"
-            };
-            
-            if (quote.status === 'Sold at Quoted Price Outright') {
-                orderType = 'Sales';
-                if (outrightPrice && outrightPrice > 0) {
-                    orderRow["Price Outright"] = outrightPrice;
-                }
-            } else if (quote.status === 'Sold at Quoted Price Exchange') {
-                orderType = 'Exchange';
-                if (exchangePrice && exchangePrice > 0) {
-                    orderRow["Price Exchange"] = exchangePrice;
-                }
-            } else {
-                if (exchangePrice && exchangePrice > 0) {
-                    orderType = 'Exchange';
-                    orderRow["Price Exchange"] = exchangePrice;
-                }
-                if (outrightPrice && outrightPrice > 0) {
-                    if (!orderRow["Price Exchange"]) {
-                        orderType = 'Sales';
-                    }
-                    orderRow["Price Outright"] = outrightPrice;
-                }
-            }
-            
-            orderRow["Type"] = orderType;
-            
-            if (quote.warrantyDays) {
-                orderRow["Warranty"] = `${quote.warrantyDays} days`;
-            }
-            
-            if (quote.notes) {
-                orderRow["Notes"] = quote.notes;
-            }
-            
-            orderRows.push(orderRow);
-        }
-        
-        if (orderRows.length === 0) {
-            throw new Error('No valid orders to create');
-        }
-        
-        const orderData = {
-            "Action": "Add",
-            "Properties": {
-                "Locale": "en-US"
-            },
-            "Rows": orderRows
-        };
-        
-        const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
-        const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
-        
-        const response = await fetch(API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'ApplicationAccessKey': APPSHEET_CONFIG.API_KEY
-            },
-            body: JSON.stringify(orderData)
-        });
-        
-        if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`AppSheet API Error: ${response.status} - ${errorText}`);
-        }
-        
-        const result = await response.json();
-        console.log('Bulk orders created:', result);
-        
-        loadingMessage.style.background = 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)';
-        loadingMessage.innerHTML = `
-            ✓ ${orderRows.length} orders created with ${sharedOrderNum}!<br>
-            <span style="font-size: 12px; opacity: 0.9;">Open AppSheet to complete the order</span>
-        `;
-        
-        setTimeout(() => {
-            document.body.removeChild(loadingMessage);
-        }, 5000);
-        
-    } catch (error) {
-        console.error('Error creating bulk orders:', error);
-        
-        loadingMessage.style.background = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
-        loadingMessage.innerHTML = `
-            ✗ Failed to create orders<br>
-            <span style="font-size: 12px;">${error.message}</span>
-        `;
-        
-        setTimeout(() => {
-            document.body.removeChild(loadingMessage);
-        }, 5000);
-    }
-}
-
-function listenForQuoteHistory(pn) {
-    const quotesRef = database.ref('quotes').orderByChild('pn').equalTo(pn);
-    currentHistoryListener = quotesRef;
-    
-    quotesRef.on('value', (snapshot) => {
-        const historyBody = document.getElementById('historyBody');
-        const noHistoryMessage = document.getElementById('noHistoryMessage');
-        let quotes = [];
-        
-        if (snapshot.exists()) {
-            noHistoryMessage.style.display = 'none';
-            snapshot.forEach(childSnapshot => {
-                quotes.push({ id: childSnapshot.key, ...childSnapshot.val() });
-            });
-            
-            const sortedQuotes = quotes.sort((a, b) => new Date(b.date) - new Date(a.date));
-            const filteredQuotes = filterQuotesByTimeRange(sortedQuotes, currentHistoryTimeFilter);
-            renderHistoryTable(historyBody, filteredQuotes);
-        } else {
-            historyBody.innerHTML = '';
-            noHistoryMessage.style.display = 'block';
-        }
-    });
-}
-
-function filterQuotesByTimeRange(quotes, timeRange) {
-    if (timeRange === 'all') {
-        return quotes;
-    }
-    
-    const now = Date.now();
-    let cutoffDate;
-    
-    switch(timeRange) {
-        case 'month':
-            cutoffDate = now - (30 * 24 * 60 * 60 * 1000);
-            break;
-        case '6months':
-            cutoffDate = now - (180 * 24 * 60 * 60 * 1000);
-            break;
-        case 'year':
-            cutoffDate = now - (365 * 24 * 60 * 60 * 1000);
-            break;
-        default:
-            return quotes;
-    }
-    
-    return quotes.filter(quote => {
-        const quoteDate = new Date(quote.date).getTime();
-        return quoteDate >= cutoffDate;
-    });
-}
-
-function handleHistoryTimeFilterChange(event) {
-    currentHistoryTimeFilter = event.target.value;
-    
-    const currentPn = document.getElementById('partNumber').textContent;
-    if (currentPn && currentPn !== 'N/A') {
-        if (currentHistoryListener) {
-            currentHistoryListener.off();
-            listenForQuoteHistory(currentPn);
-        }
-    }
-}
-
-function fetchAllQuotesForSearch() {
-    const quotesRef = database.ref('quotes');
-    quotesRef.on('value', (snapshot) => {
-        const quotes = snapshot.val();
-        if (quotes) {
-            allQuotesCache = Object.keys(quotes)
-                .map(key => ({ id: key, ...quotes[key] }))
-                .sort((a, b) => new Date(b.date) - new Date(a.date));
-            
-            const displayQuotes = getQuotesToDisplay();
-            renderHistoryTable(document.getElementById('searchHistoryBody'), displayQuotes, true);
-        } else {
-            allQuotesCache = [];
-            document.getElementById('searchHistoryBody').innerHTML = '';
-        }
-        
-        const searchTerm = document.getElementById('quoteSearchInput').value;
-        if (searchTerm) filterAndDisplayQuotes(searchTerm);
-        
-        const currentPn = document.getElementById('partNumber').textContent;
-        if (currentPn && currentPn !== 'N/A') {
-            updateHotItemBadge(currentPn);
-        }
-    });
-}
-
-function getQuotesToDisplay() {
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    let quotes = allQuotesCache;
-    
-    switch(currentResultsLimit) {
-        case 'today':
-            quotes = allQuotesCache.filter(q => {
-                const qDate = new Date(q.date);
-                return qDate >= todayStart && qDate <= todayEnd;
-            });
-            break;
-        case 'yesterday':
-            quotes = allQuotesCache.filter(q => {
-                const qDate = new Date(q.date);
-                return qDate >= yesterdayStart && qDate <= yesterdayEnd;
-            });
-            break;
-        case 'week':
-            quotes = allQuotesCache.filter(q => new Date(q.date) >= weekAgo);
-            break;
-        case 'month':
-            quotes = allQuotesCache.filter(q => new Date(q.date) >= monthAgo);
-            break;
-        case 'all':
-            quotes = allQuotesCache;
-            break;
-        default:
-            quotes = allQuotesCache.slice(0, parseInt(currentResultsLimit));
-            break;
-    }
-    
-    return quotes;
-}
-
-function handleResultsLimitChange(event) {
-    currentResultsLimit = event.target.value;
-    const searchTerm = document.getElementById('quoteSearchInput').value;
-    
-    if (searchTerm) {
-        filterAndDisplayQuotes(searchTerm);
-    } else {
-        const displayQuotes = getQuotesToDisplay();
-        renderHistoryTable(document.getElementById('searchHistoryBody'), displayQuotes, true);
-        document.getElementById('noSearchResultsMessage').style.display = displayQuotes.length === 0 ? 'block' : 'none';
-    }
-}
-
-function filterAndDisplayQuotes(searchTerm) {
-    const searchHistoryBody = document.getElementById('searchHistoryBody');
-    const noResultsMessage = document.getElementById('noSearchResultsMessage');
-    
-    if (!searchTerm) {
-        const displayQuotes = getQuotesToDisplay();
-        renderHistoryTable(searchHistoryBody, displayQuotes, true);
-        noResultsMessage.textContent = 'Type in the search bar to find quotes.';
-        noResultsMessage.style.display = displayQuotes.length === 0 ? 'block' : 'none';
-        return;
-    }
-    
-    // Apply the time filter first using the SAME logic as getQuotesToDisplay
-    const now = new Date();
-    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
-    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
-    const yesterdayStart = new Date(todayStart);
-    yesterdayStart.setDate(yesterdayStart.getDate() - 1);
-    const yesterdayEnd = new Date(todayEnd);
-    yesterdayEnd.setDate(yesterdayEnd.getDate() - 1);
-    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-    const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
-    
-    let quotesToFilter = allQuotesCache;
-    
-    switch(currentResultsLimit) {
-        case 'today':
-            quotesToFilter = allQuotesCache.filter(q => {
-                const qDate = new Date(q.date);
-                return qDate >= todayStart && qDate <= todayEnd;
-            });
-            break;
-        case 'yesterday':
-            quotesToFilter = allQuotesCache.filter(q => {
-                const qDate = new Date(q.date);
-                return qDate >= yesterdayStart && qDate <= yesterdayEnd;
-            });
-            break;
-        case 'week':
-            quotesToFilter = allQuotesCache.filter(q => new Date(q.date) >= weekAgo);
-            break;
-        case 'month':
-            quotesToFilter = allQuotesCache.filter(q => new Date(q.date) >= monthAgo);
-            break;
-        case 'all':
-            quotesToFilter = allQuotesCache;
-            break;
-        default:
-            // For numeric values like "10" (Recent)
-            quotesToFilter = allQuotesCache.slice(0, parseInt(currentResultsLimit));
-            break;
-    }
-    
-    // Now apply the search term filter
-    const lowerCaseSearchTerm = searchTerm.toLowerCase();
-    const filteredQuotes = quotesToFilter.filter(q =>
-        (q.pn && q.pn.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        (q.sold && q.sold.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        (q.itemName && q.itemName.toLowerCase().includes(lowerCaseSearchTerm)) ||
-        (q.status && q.status.toLowerCase().includes(lowerCaseSearchTerm))
-    );
-    
-    if (filteredQuotes.length > 0) {
-        noResultsMessage.style.display = 'none';
-        renderHistoryTable(searchHistoryBody, filteredQuotes, true);
-    } else {
-        searchHistoryBody.innerHTML = '';
-        noResultsMessage.textContent = 'No quotes found matching your search.';
-        noResultsMessage.style.display = 'block';
-    }
-}
-
-function handleCheckboxChange(event) {
-    const checkbox = event.target;
-    const quoteId = checkbox.dataset.quoteId;
-    
-    if (checkbox.checked) {
-        selectedQuotes.add(quoteId);
-    } else {
-        selectedQuotes.delete(quoteId);
-    }
-    
-    updateSelectedCount();
-    updateSelectAllCheckbox();
-}
-
-function updateSelectedCount() {
-    const count = selectedQuotes.size;
-    document.getElementById('selectedCount').textContent = count;
-    document.getElementById('copyCount').textContent = count;
-    document.getElementById('bulkOrderCount').textContent = count;
-    document.getElementById('generatePdfButton').disabled = count === 0;
-    document.getElementById('copySelectedButton').disabled = count === 0;
-    document.getElementById('createBulkOrdersButton').disabled = count === 0;
-}
-
-function handleSelectAll(event) {
-    const isChecked = event.target.checked;
-    const checkboxes = document.querySelectorAll('.quote-checkbox');
-    
-    checkboxes.forEach(checkbox => {
-        checkbox.checked = isChecked;
-        const quoteId = checkbox.dataset.quoteId;
-        
-        if (isChecked) {
-            selectedQuotes.add(quoteId);
-        } else {
-            selectedQuotes.delete(quoteId);
-        }
-    });
-    
-    updateSelectedCount();
-}
-
-function updateSelectAllCheckbox() {
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    const checkboxes = document.querySelectorAll('.quote-checkbox');
-    const checkedBoxes = document.querySelectorAll('.quote-checkbox:checked');
-    
-    if (checkboxes.length === 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-    } else if (checkedBoxes.length === checkboxes.length) {
-        selectAllCheckbox.checked = true;
-        selectAllCheckbox.indeterminate = false;
-    } else if (checkedBoxes.length > 0) {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = true;
-    } else {
-        selectAllCheckbox.checked = false;
-        selectAllCheckbox.indeterminate = false;
-    }
-}
-
-function copySelectedQuotes() {
-    if (selectedQuotes.size === 0) {
-        alert('Please select at least one quote to copy.');
-        return;
-    }
-    
-    const selected = allQuotesCache.filter(q => selectedQuotes.has(q.id));
-    
-    let copyText = '';
-    
-    selected.forEach((quote, index) => {
-        copyText += `Item ${index + 1}:\n`;
-        copyText += `Name: ${quote.itemName || 'N/A'}\n`;
-        copyText += `PN: ${quote.pn || 'N/A'}\n`;
-        
-        if (quote.exchangePrice) {
-            copyText += `Exchange Price: ${formatPrice(quote.exchangePrice)}\n`;
-        }
-        if (quote.outrightPrice) {
-            copyText += `Outright Price: ${formatPrice(quote.outrightPrice)}\n`;
-        }
-        copyText += `Warranty: ${quote.warrantyDays || 60} days\n`;
-        if (quote.notes && quote.notes.trim() !== '') {
-            copyText += `Notes: ${quote.notes}\n`;
-        }
-        
-        copyText += '\n';
-    });
-    
-    navigator.clipboard.writeText(copyText).then(() => {
-        const button = document.getElementById('copySelectedButton');
-        const originalText = button.innerHTML;
-        button.innerHTML = `Copied! (${selected.length})`;
-        button.style.backgroundColor = '#28a745';
-        
-        setTimeout(() => {
-            button.innerHTML = originalText;
-            button.style.backgroundColor = '';
-        }, 2000);
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        alert('Failed to copy to clipboard. Please try again.');
-    });
-}
-
-function calculatePriceHistory(pn) {
-    if (!pn) return [];
-    
-    return allQuotesCache
-        .filter(quote => quote.pn === pn)
-        .map(quote => ({
-            date: new Date(quote.date),
-            outrightPrice: quote.outrightPrice || null,
-            exchangePrice: quote.exchangePrice || null,
-            status: quote.status
-        }))
-        .sort((a, b) => a.date - b.date);
-}
-
-function renderPriceHistoryChart(pn) {
-    currentPriceHistoryPn = pn;
-    const canvas = document.getElementById('priceHistoryChart');
-    const noDataMessage = document.getElementById('noPriceHistoryMessage');
-    
-    const salesData = calculatePriceHistory(pn);
-    
-    if (salesData.length === 0) {
-        canvas.style.display = 'none';
-        noDataMessage.style.display = 'block';
-        if (priceHistoryChart) {
-            priceHistoryChart.destroy();
-            priceHistoryChart = null;
-        }
-        return;
-    }
-    
-    canvas.style.display = 'block';
-    noDataMessage.style.display = 'none';
-    
-    const labels = salesData.map(d => d.date.toLocaleDateString());
-    
-    const quotedExchange = salesData.map(d => d.status === 'Quoted' ? d.exchangePrice : null);
-    const quotedOutright = salesData.map(d => d.status === 'Quoted' ? d.outrightPrice : null);
-    const soldExchange = salesData.map(d => d.status === 'Sold at Quoted Price Exchange' ? d.exchangePrice : null);
-    const soldOutright = salesData.map(d => d.status === 'Sold at Quoted Price Outright' ? d.outrightPrice : null);
-    const lostExchange = salesData.map(d => d.status === 'Lost Sale' ? d.exchangePrice : null);
-    const lostOutright = salesData.map(d => d.status === 'Lost Sale' ? d.outrightPrice : null);
-    
-    const config = {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: 'Quoted - Exchange',
-                    data: quotedExchange,
-                    borderColor: '#3b82f6',
-                    backgroundColor: '#3b82f6',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                },
-                {
-                    label: 'Quoted - Outright',
-                    data: quotedOutright,
-                    borderColor: '#93c5fd',
-                    backgroundColor: '#93c5fd',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                },
-                {
-                    label: 'Sold - Exchange',
-                    data: soldExchange,
-                    borderColor: '#22c55e',
-                    backgroundColor: '#22c55e',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                },
-                {
-                    label: 'Sold - Outright',
-                    data: soldOutright,
-                    borderColor: '#4ade80',
-                    backgroundColor: '#4ade80',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                },
-                {
-                    label: 'Lost Sale - Exchange',
-                    data: lostExchange,
-                    borderColor: '#ef4444',
-                    backgroundColor: '#ef4444',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                },
-                {
-                    label: 'Lost Sale - Outright',
-                    data: lostOutright,
-                    borderColor: '#f87171',
-                    backgroundColor: '#f87171',
-                    pointRadius: 6,
-                    pointHoverRadius: 8,
-                    borderWidth: 2,
-                    tension: 0,
-                    spanGaps: false
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: true,
-            interaction: {
-                mode: 'nearest',
-                intersect: false
-            },
-            plugins: {
-                legend: { 
-                    position: 'top',
-                    labels: {
-                        font: { size: 10 },
-                        boxWidth: 12,
-                        padding: 8,
-                        usePointStyle: true
-                    }
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            if (context.parsed.y === null) return null;
-                            let label = context.dataset.label || '';
-                            label += ': $' + context.parsed.y.toLocaleString('en-US', {
-                                minimumFractionDigits: 2,
-                                maximumFractionDigits: 2
-                            });
-                            return label;
-                        }
-                    }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return '$' + value.toLocaleString();
-                        }
-                    }
-                },
-                x: {
-                    ticks: {
-                        maxRotation: 45,
-                        minRotation: 45
-                    }
-                }
-            }
-        }
+function getWarrantyDays(warranty) {
+    const warrantyMap = {
+        'No Warranty': 0,
+        '30 Days': 30,
+        '90 Days': 90,
+        '6 Months': 180,
+        '1 Year': 365,
+        '2 Years': 730,
+        '3 Years': 1095,
+        'Lifetime': 3650
     };
-    
-    if (priceHistoryChart) {
-        priceHistoryChart.destroy();
-    }
-    priceHistoryChart = new Chart(canvas, config);
-    
-    document.getElementById('priceHistorySearchInput').value = pn;
-    
-    setTimeout(() => {
-        if (priceHistoryChart) {
-            priceHistoryChart.resize();
-            priceHistoryChart.update();
-        }
-    }, 100);
+    return warrantyMap[warranty] || 0;
 }
 
-function handlePriceHistorySearch() {
-    const searchInput = document.getElementById('priceHistorySearchInput');
-    const pn = searchInput.value.trim();
-    
-    if (!pn) {
-        alert('Please enter a part number');
-        return;
-    }
-    
-    renderPriceHistoryChart(pn);
+function getEditWarrantyDays(warranty) {
+    return getWarrantyDays(warranty);
 }
 
-function openEditModal(quote) {
-    const modal = document.getElementById('editModal');
-    document.getElementById('editQuoteId').value = quote.id;
+function toggleManualEntry() {
+    const autoDetails = document.getElementById('autoItemDetails');
+    const manualDetails = document.getElementById('manualItemDetails');
     
-    const quoteDate = new Date(quote.date);
-    const formattedDate = quoteDate.toLocaleDateString('en-US', { 
-        year: 'numeric', 
-        month: 'short', 
-        day: 'numeric' 
-    });
-    
-    const itemInfo = document.getElementById('editItemInfo');
-    itemInfo.textContent = `Quoted: ${formattedDate} • ${quote.itemName || 'N/A'} • PN: ${quote.pn || 'N/A'}`;
-    
-    // Set the date input field
-    const dateForInput = quote.date.split('T')[0];
-    document.getElementById('editDate').value = dateForInput;
-    
-    const soldToSelect = document.getElementById('editSoldTo');
-    soldToSelect.innerHTML = '';
-    soldListCache.forEach(name => {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        if (name === quote.sold) option.selected = true;
-        soldToSelect.appendChild(option);
-    });
-    
-    const outright = quote.outrightPrice ? quote.outrightPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-    const exchange = quote.exchangePrice ? quote.exchangePrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
-    
-    document.getElementById('editItemName').value = quote.itemName || '';
-    document.getElementById('editPartNumber').value = quote.pn || '';
-    document.getElementById('editOutrightPrice').value = outright;
-    document.getElementById('editExchangePrice').value = exchange;
-    document.getElementById('editStatus').value = quote.status;
-    document.getElementById('editNotes').value = quote.notes || '';
-    
-    const warrantyDays = quote.warrantyDays || 60;
-    if ([30, 60, 90].includes(warrantyDays)) {
-        document.getElementById('editWarrantyDays').value = warrantyDays;
-        document.getElementById('editCustomWarrantyGroup').style.display = 'none';
+    if (manualDetails.style.display === 'none') {
+        autoDetails.style.display = 'none';
+        manualDetails.style.display = 'block';
     } else {
-        document.getElementById('editWarrantyDays').value = 'custom';
-        document.getElementById('editCustomWarranty').value = warrantyDays;
-        document.getElementById('editCustomWarrantyGroup').style.display = 'block';
+        autoDetails.style.display = 'block';
+        manualDetails.style.display = 'none';
+        document.getElementById('manualItemName').value = '';
+        document.getElementById('manualPartNumber').value = '';
     }
-    
-    modal.classList.add('visible');
-    document.body.classList.add('modal-open');
 }
 
-function closeEditModal() {
-    document.getElementById('editModal').classList.remove('visible');
-    document.body.classList.remove('modal-open');
-}
+async function handleFormSubmit(e) {
+    e.preventDefault();
+    
+    const submitBtn = document.getElementById('submitBtn');
+    const messageDiv = document.getElementById('formMessage');
+    
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Submitting...';
+    messageDiv.style.display = 'none';
 
-async function handleEditFormSubmit() {
-    const quoteId = document.getElementById('editQuoteId').value;
-    if (!quoteId) return;
+    const manualMode = document.getElementById('manualItemDetails').style.display !== 'none';
     
-    // Get the original quote to check ownership
-    const quoteSnapshot = await database.ref('quotes/' + quoteId).once('value');
-    const originalQuote = quoteSnapshot.val();
-    
-    // Permission check
-    const canEdit = currentUserData.role === 'Admin' || 
-                   (currentUserData.role === 'Sales Rep' && originalQuote.createdBy === currentUser.uid);
-    
-    if (!canEdit) {
-        alert('You do not have permission to edit this quote. Only admins or the quote creator can edit quotes.');
-        closeEditModal();
-        return;
+    let itemName, partNumber;
+    if (manualMode) {
+        itemName = document.getElementById('manualItemName').value.trim();
+        partNumber = document.getElementById('manualPartNumber').value.trim();
+        
+        if (!itemName || !partNumber) {
+            messageDiv.className = 'message error';
+            messageDiv.textContent = 'Please fill in both Item Name and Part Number for manual entry.';
+            messageDiv.style.display = 'block';
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Quote';
+            return;
+        }
+    } else {
+        itemName = document.getElementById('itemName').textContent;
+        partNumber = document.getElementById('partNumber').textContent;
     }
-    
-    const outrightPriceValue = document.getElementById('editOutrightPrice').value.replace(/,/g, '');
-    const exchangePriceValue = document.getElementById('editExchangePrice').value.replace(/,/g, '');
-    
-    const updatedQuote = {
-        itemName: document.getElementById('editItemName').value,
-        pn: document.getElementById('editPartNumber').value,
-        sold: document.getElementById('editSoldTo').value,
-        outrightPrice: outrightPriceValue ? parseFloat(outrightPriceValue) : null,
-        exchangePrice: exchangePriceValue ? parseFloat(exchangePriceValue) : null,
-        status: document.getElementById('editStatus').value,
-        warrantyDays: getEditWarrantyDays(),
-        notes: document.getElementById('editNotes').value,
-        date: new Date(document.getElementById('editDate').value).toISOString(),
-        // Modification tracking
-        lastModifiedBy: currentUser.uid,
-        lastModifiedByEmail: currentUser.email,
-        lastModifiedByName: currentUserData.name,
-        lastModifiedAt: new Date().toISOString()
+
+    const formData = {
+        pn: partNumber,
+        item: itemName,
+        sold: document.getElementById('customer').value,
+        qnum: document.getElementById('qnum').value,
+        cprice: parseFloat(document.getElementById('cprice').value),
+        sprice: parseFloat(document.getElementById('sprice').value),
+        warranty: document.getElementById('warranty').value,
+        notes: document.getElementById('notes').value.trim(),
+        status: 'Quoted',
+        date: new Date().toISOString(),
+        timestamp: Date.now(),
+        createdBy: currentUser.uid,
+        createdByEmail: currentUser.email,
+        createdByName: currentUserData.name
     };
-    
+
     try {
-        await database.ref('quotes/' + quoteId).update(updatedQuote);
+        await database.ref('quotes').push(formData);
         
-        // Log activity
-        await logActivity('edit_quote', quoteId, `Edited quote for ${updatedQuote.itemName} (${updatedQuote.pn}) - ${updatedQuote.sold}`);
-        
-        closeEditModal();
-    } catch (error) {
-        console.error("Error updating quote:", error);
-        alert("Failed to update quote. See console for details.");
-    }
-}
-
-async function handleDeleteQuote() {
-    const quoteId = document.getElementById('editQuoteId').value;
-    if (!quoteId) return;
-    
-    // Get the original quote to check ownership
-    const quoteSnapshot = await database.ref('quotes/' + quoteId).once('value');
-    const originalQuote = quoteSnapshot.val();
-    
-    // Permission check
-    const canDelete = currentUserData.role === 'Admin' || 
-                     (currentUserData.role === 'Sales Rep' && originalQuote.createdBy === currentUser.uid);
-    
-    if (!canDelete) {
-        alert('You do not have permission to delete this quote. Only admins or the quote creator can delete quotes.');
-        return;
-    }
-    
-    if (confirm("Are you sure you want to delete this quote permanently?")) {
-        try {
-            // Log activity before deleting
-            await logActivity('delete_quote', quoteId, `Deleted quote for ${originalQuote.itemName} (${originalQuote.pn}) - ${originalQuote.sold}`);
-            
-            await database.ref('quotes/' + quoteId).remove();
-            closeEditModal();
-        } catch (error) {
-            console.error("Error deleting quote:", error);
-            alert("Failed to delete quote. See console for details.");
-        }
-    }
-}
-
-function handleStatusChange(event, quoteId) {
-    const newStatus = event.target.value;
-    const selectElement = event.target;
-    
-    database.ref('quotes/' + quoteId).update({ status: newStatus })
-        .then(() => {
-            selectElement.style.borderColor = '#28a745';
-            setTimeout(() => {
-                selectElement.style.borderColor = '#d1d5db';
-            }, 1500);
-        })
-        .catch(error => {
-            console.error('Update failed:', error);
-            selectElement.style.borderColor = '#dc3545';
-            setTimeout(() => {
-                selectElement.style.borderColor = '#d1d5db';
-            }, 2000);
+        await logActivity('quote_created', {
+            quoteNumber: formData.qnum,
+            itemName: formData.item,
+            partNumber: formData.pn,
+            customer: formData.sold
         });
-}
 
-async function generatePDF() {
-    if (selectedQuotes.size === 0) {
-        alert('Please select at least one quote to generate a PDF.');
-        return;
-    }
+        messageDiv.className = 'message success';
+        messageDiv.textContent = 'Quote submitted successfully!';
+        messageDiv.style.display = 'block';
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
-    
-    const selected = allQuotesCache.filter(q => selectedQuotes.has(q.id));
-    
-    const hasOutright = selected.some(q => q.outrightPrice && !isNaN(parseFloat(q.outrightPrice)));
-    const hasExchange = selected.some(q => q.exchangePrice && !isNaN(parseFloat(q.exchangePrice)));
-    const hasNotes = selected.some(q => q.notes && q.notes.trim() !== '');
-    
-    const quoteNumber = await getNextQuoteNumber();
-    const customerName = selected[0]?.sold || 'N/A';
-    const quoteDate = new Date().toLocaleDateString();
-    
-    doc.setFontSize(8);
-    doc.setTextColor(60, 60, 60);
-    const companyInfo = [
-        'iMED All, Inc.',
-        '727 N Main St.',
-        'Orange CA, 92868',
-        '+1 (714)-271-2721'
-    ];
-    let yPos = 12;
-    companyInfo.forEach(line => {
-        doc.text(line, 195, yPos, { align: 'right' });
-        yPos += 4;
-    });
-    
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.5);
-    doc.line(15, 30, 195, 30);
-    
-    doc.setFontSize(10);
-    doc.setTextColor(60, 60, 60);
-    doc.text(`Customer: ${customerName}`, 15, 38);
-    doc.text(`Date: ${quoteDate}`, 15, 44);
-    
-    doc.setFontSize(28);
-    doc.setTextColor(45, 122, 127);
-    doc.setFont(undefined, 'bold');
-    doc.text('QUOTE', 15, 60);
-    
-    doc.setFontSize(11);
-    doc.setTextColor(100, 100, 100);
-    doc.setFont(undefined, 'normal');
-    doc.text(`Quote Number: ${quoteNumber}`, 15, 68);
-    
-    let totalOutright = 0;
-    let totalExchange = 0;
-    
-    selected.forEach(quote => {
-        if (quote.outrightPrice && !isNaN(parseFloat(quote.outrightPrice))) {
-            totalOutright += parseFloat(quote.outrightPrice);
-        }
-        if (quote.exchangePrice && !isNaN(parseFloat(quote.exchangePrice))) {
-            totalExchange += parseFloat(quote.exchangePrice);
-        }
-    });
-    
-    const headers = ['Item Name', 'PN'];
-    if (hasExchange) headers.push('Exchange');
-    if (hasOutright) headers.push('Outright');
-    headers.push('Warranty');
-    if (hasNotes) headers.push('Notes');
-    
-    const tableData = selected.map(quote => {
-        const row = [
-            quote.itemName || 'N/A',
-            quote.pn || 'N/A'
-        ];
+        document.getElementById('quoteForm').reset();
+        document.getElementById('cprice').value = '';
+        document.getElementById('sprice').value = '';
         
-        if (hasExchange) {
-            row.push(formatPrice(quote.exchangePrice));
-        }
-        if (hasOutright) {
-            row.push(formatPrice(quote.outrightPrice));
-        }
-        row.push(`${quote.warrantyDays || 60} days`);
-        if (hasNotes) {
-            row.push(quote.notes || '—');
-        }
-        
-        return row;
-    });
-    
-    const columnStyles = {
-        0: { cellWidth: hasNotes ? 45 : 60 },
-        1: { cellWidth: hasNotes ? 35 : 45 }
-    };
-    
-    let colIndex = 2;
-    if (hasExchange) {
-        columnStyles[colIndex] = { cellWidth: 28 };
-        colIndex++;
-    }
-    if (hasOutright) {
-        columnStyles[colIndex] = { cellWidth: 28 };
-        colIndex++;
-    }
-    columnStyles[colIndex] = { cellWidth: 25 };
-    colIndex++;
-    
-    if (hasNotes) {
-        columnStyles[colIndex] = { cellWidth: 'auto' };
-    }
-    
-    doc.autoTable({
-        startY: 75,
-        head: [headers],
-        body: tableData,
-        theme: 'plain',
-        headStyles: {
-            fillColor: [45, 122, 127],
-            textColor: [255, 255, 255],
-            fontSize: 10,
-            fontStyle: 'bold',
-            lineWidth: 0
-        },
-        styles: {
-            fontSize: 8,
-            cellPadding: 4,
-            lineColor: [220, 220, 220],
-            lineWidth: 0.5,
-            fillColor: [250, 250, 250],
-            overflow: 'linebreak',
-            cellWidth: 'wrap'
-        },
-        alternateRowStyles: {
-            fillColor: [240, 240, 240]
-        },
-        columnStyles: columnStyles,
-        margin: { left: 15, right: 15 },
-        tableLineWidth: 0
-    });
-    
-    const finalY = doc.lastAutoTable.finalY;
-    
-    if (hasExchange && totalExchange > 0) {
-        doc.setFillColor(45, 122, 127);
-        doc.rect(15, finalY + 10, 180, 10, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont(undefined, 'bold');
-        doc.text(`Total Exchange Price: ${formatPrice(totalExchange)}`, 20, finalY + 17);
-    }
-    
-    if (hasOutright && totalOutright > 0) {
-        const yPos = (hasExchange && totalExchange > 0) ? finalY + 22 : finalY + 10;
-        
-        if (hasExchange && totalExchange > 0) {
-            doc.setDrawColor(220, 220, 220);
-            doc.setLineWidth(0.5);
-            doc.line(15, finalY + 21, 195, finalY + 21);
-        }
-        
-        doc.setFillColor(45, 122, 127);
-        doc.rect(15, yPos, 180, 10, 'F');
-        doc.setFontSize(12);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont(undefined, 'bold');
-        doc.text(`Total Outright Price: ${formatPrice(totalOutright)}`, 20, yPos + 7);
+        await getNextQuoteNumber();
+
+        setTimeout(() => {
+            messageDiv.style.display = 'none';
+        }, 3000);
+
+    } catch (error) {
+        console.error('Error submitting quote:', error);
+        messageDiv.className = 'message error';
+        messageDiv.textContent = 'Error submitting quote. Please try again.';
+        messageDiv.style.display = 'block';
     }
 
-    doc.addPage();
-    
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text(quoteNumber, 20, 15);
-    
-    doc.setFontSize(18);
-    doc.setTextColor(45, 122, 127);
-    doc.setFont(undefined, 'bold');
-    doc.text('Terms and Conditions', 105, 30, { align: 'center' });
-    
-    doc.setFontSize(10);
-    doc.setTextColor(0, 0, 0);
-    doc.setFont(undefined, 'normal');
-    
-    const terms = [
-        '',
-        'Terms in item entry supersede the following general terms.',
-        '',
-        'SHIPPING',
-        'Shipping charges are not included. Shipping terms follow Incoterms 2020 (EXW Orange, California).',
-        '',
-        'INSURANCE',
-        'Buyer is responsible for insuring the package and content.',
-        '',
-        'SALES',
-        'Sales are final and for working genuine used parts. The customer is aware that the items purchased are in used condition and as such may show slight abrasion, scratches or discoloration.',
-        '',
-        'RESTOCKING',
-        'If permitted by seller, items must be returned within 10 days. Buyer pays 25% restocking fee. Seller returns 75% upon return and testing of the restocked parts. Parts must be returned in working condition or the parts will not be accepted for restocking; customer will be responsible for 100% purchase price and shipping cost of the part back to customer.',
-        '',
-        '',
-        '',
-        'EXCHANGE SALE',
-        'Exchange item needs to be returned prior to shipping of ordered parts unless otherwise agreed and stated, but in any case not later than 30 days. Exchange items must be repairable or outright sale applies.',
-        '',
-        'WARRANTY',
-        '60 days from date of delivery.',
-        '',
-        'TAXES AND DUTIES',
-        'The customer is responsible for all federal, state or local taxes, customs, or duties as they apply by governing agencies.',
-        '',
-        'PAYMENT',
-        'Payment via bank transfer, direct deposit or secured check. Credit card payments incur an additional 3% processing fee.',
-        '',
-        'Mail checks to:',
-        'iMed All, Inc.',
-        '727 N Main St.',
-        'Orange, CA 92868',
-        ''
-    ];
-    
-    let yPosition = 45;
-    const lineHeight = 5.5;
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const bottomMargin = 20;
-    
-    terms.forEach(line => {
-        if (yPosition > pageHeight - bottomMargin) {
-            doc.addPage();
-            yPosition = 20;
-        }
-        
-        if (line.match(/^[A-Z\s]+$/) && line.trim() !== '') {
-            doc.setFont(undefined, 'bold');
-        } else {
-            doc.setFont(undefined, 'normal');
-        }
-        
-        doc.text(line, 20, yPosition, { maxWidth: 170 });
-        yPosition += lineHeight;
-    });
-    
-    const totalPages = doc.internal.getNumberOfPages();
-    for (let i = 1; i <= totalPages; i++) {
-        doc.setPage(i);
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.setFont(undefined, 'normal');
-        doc.text(`${quoteNumber} - Page ${i} of ${totalPages}`, doc.internal.pageSize.getWidth() / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' });
-    }
-    
-    const fileName = `iMED_Quote_${quoteNumber}.pdf`;
-    doc.save(fileName);
+    submitBtn.disabled = false;
+    submitBtn.textContent = 'Submit Quote';
 }
 
 async function getNextQuoteNumber() {
-    const counterRef = database.ref('quoteCounter');
     try {
+        const counterRef = database.ref('quoteCounter');
         const snapshot = await counterRef.once('value');
-        let currentNumber = snapshot.val() || 0;
-        const newNumber = currentNumber + 1;
-        await counterRef.set(newNumber);
-        return `IMA_Q${newNumber}`;
+        let counter = snapshot.val() || 0;
+        counter++;
+        await counterRef.set(counter);
+        
+        const quoteNumber = `IMA_Q${counter}`;
+        document.getElementById('qnum').value = quoteNumber;
+        
+        return quoteNumber;
     } catch (error) {
         console.error("Error generating quote number:", error);
         return `IMA_Q${Date.now()}`;
@@ -2247,7 +808,6 @@ async function getNextQuoteNumber() {
 
 async function getNextOrderNumber() {
     try {
-        // First, check AppSheet for existing order numbers
         const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
         const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
         
@@ -2281,15 +841,12 @@ async function getNextOrderNumber() {
             }
         }
         
-        // Use Firebase counter as backup/sync
         const counterRef = database.ref('orderCounter');
         const snapshot = await counterRef.once('value');
         const firebaseCounter = snapshot.val() || 0;
         
-        // Use whichever is higher
         const nextNumber = Math.max(maxOrderNum, firebaseCounter) + 1;
         
-        // Update Firebase counter
         await counterRef.set(nextNumber);
         
         return `SO-${nextNumber}`;
@@ -2402,6 +959,800 @@ async function checkAndExpireQuotes() {
         }
     } catch (error) {
         console.error("Error checking for expired quotes:", error);
+    }
+}
+        let allQuotesCache = [];
+let soldListCache = [];
+let filteredQuotesCache = [];
+let currentTimeFilter = 'month';
+let currentResultsLimit = 50;
+
+function listenForQuoteHistory() {
+    const quotesRef = database.ref('quotes');
+    
+    quotesRef.on('value', (snapshot) => {
+        allQuotesCache = [];
+        
+        snapshot.forEach((childSnapshot) => {
+            const quote = childSnapshot.val();
+            quote.id = childSnapshot.key;
+            allQuotesCache.push(quote);
+        });
+        
+        allQuotesCache.sort((a, b) => {
+            const dateA = new Date(a.date).getTime();
+            const dateB = new Date(b.date).getTime();
+            return dateB - dateA;
+        });
+        
+        renderHistoryTable();
+    });
+}
+
+function handleHistoryTimeFilterChange() {
+    currentTimeFilter = document.getElementById('historyTimeFilter').value;
+    renderHistoryTable();
+}
+
+function handleResultsLimitChange() {
+    currentResultsLimit = document.getElementById('resultsLimit').value;
+    renderHistoryTable();
+}
+
+function getFilteredQuotesByTime(quotes, timeFilter) {
+    const now = Date.now();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch(timeFilter) {
+        case 'today':
+            return quotes.filter(q => new Date(q.date).getTime() >= today.getTime());
+        
+        case 'week':
+            const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= weekAgo);
+        
+        case 'month':
+            const monthAgo = now - (30 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= monthAgo);
+        
+        case 'year':
+            const yearAgo = now - (365 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= yearAgo);
+        
+        case 'all':
+        default:
+            return quotes;
+    }
+}
+
+function getQuotesToDisplay() {
+    let quotes = getFilteredQuotesByTime(allQuotesCache, currentTimeFilter);
+    
+    if (currentResultsLimit !== 'all') {
+        const limit = parseInt(currentResultsLimit);
+        quotes = quotes.slice(0, limit);
+    }
+    
+    return quotes;
+}
+
+function renderHistoryTable() {
+    const tbody = document.getElementById('historyBody');
+    const noHistoryMsg = document.getElementById('noHistoryMessage');
+    const quotes = getQuotesToDisplay();
+    
+    if (quotes.length === 0) {
+        tbody.innerHTML = '';
+        noHistoryMsg.style.display = 'block';
+        return;
+    }
+    
+    noHistoryMsg.style.display = 'none';
+    tbody.innerHTML = '';
+    
+    quotes.forEach(quote => {
+        const row = tbody.insertRow();
+        row.dataset.quoteId = quote.id;
+        
+        const checkboxCell = row.insertCell();
+        checkboxCell.innerHTML = `<input type="checkbox" class="quote-checkbox" data-quote-id="${quote.id}" 
+                                         onchange="handleCheckboxChange()" style="width: 18px; height: 18px; cursor: pointer;">`;
+        
+        const dateCell = row.insertCell();
+        dateCell.textContent = new Date(quote.date).toLocaleDateString();
+        
+        const qnumCell = row.insertCell();
+        qnumCell.textContent = quote.qnum || '-';
+        
+        const itemCell = row.insertCell();
+        itemCell.textContent = quote.item;
+        
+        const pnCell = row.insertCell();
+        pnCell.textContent = quote.pn;
+        
+        const customerCell = row.insertCell();
+        customerCell.textContent = quote.sold;
+        
+        const costCell = row.insertCell();
+        costCell.className = 'price-cell';
+        costCell.textContent = `$${formatPrice(quote.cprice)}`;
+        
+        const sellCell = row.insertCell();
+        sellCell.className = 'price-cell';
+        sellCell.textContent = `$${formatPrice(quote.sprice)}`;
+        
+        const warrantyCell = row.insertCell();
+        warrantyCell.textContent = quote.warranty || '-';
+        
+        const statusCell = row.insertCell();
+        statusCell.className = 'status-cell';
+        const statusSelect = document.createElement('select');
+        statusSelect.style.width = '100%';
+        statusSelect.style.padding = '6px';
+        statusSelect.style.border = '1px solid #e5e7eb';
+        statusSelect.style.borderRadius = '4px';
+        statusSelect.innerHTML = `
+            <option value="Quoted" ${quote.status === 'Quoted' ? 'selected' : ''}>Quoted</option>
+            <option value="Sold" ${quote.status === 'Sold' ? 'selected' : ''}>Sold</option>
+            <option value="Lost Sale" ${quote.status === 'Lost Sale' ? 'selected' : ''}>Lost Sale</option>
+        `;
+        statusSelect.onchange = () => handleStatusChange(quote.id, statusSelect.value);
+        statusCell.appendChild(statusSelect);
+        
+        const notesCell = row.insertCell();
+        notesCell.className = 'notes-cell';
+        if (quote.notes && quote.notes.trim() !== '') {
+            const notesBtn = document.createElement('button');
+            notesBtn.textContent = 'View Notes';
+            notesBtn.dataset.action = 'view-notes';
+            notesBtn.dataset.quote = JSON.stringify(quote);
+            notesCell.appendChild(notesBtn);
+        } else {
+            notesCell.textContent = '-';
+        }
+        
+        const actionsCell = row.insertCell();
+        actionsCell.innerHTML = `
+            <button class="action-button" data-action="edit-quote" data-quote='${JSON.stringify(quote)}' title="Edit Quote">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </button>
+            <button class="action-button create-order-btn" data-action="create-order" data-quote='${JSON.stringify(quote)}' title="Create Order">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </button>
+        `;
+    });
+    
+    updateSelectAllCheckbox();
+    updateSelectedCount();
+}
+
+async function handleStatusChange(quoteId, newStatus) {
+    try {
+        await database.ref(`quotes/${quoteId}/status`).set(newStatus);
+        
+        await logActivity('quote_status_changed', {
+            quoteId: quoteId,
+            newStatus: newStatus
+        });
+        
+        console.log(`Quote ${quoteId} status updated to ${newStatus}`);
+    } catch (error) {
+        console.error('Error updating status:', error);
+        alert('Failed to update status. Please try again.');
+    }
+}
+
+function handleCheckboxChange() {
+    updateSelectAllCheckbox();
+    updateSelectedCount();
+}
+
+function handleSelectAll() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.quote-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+function updateSelectAllCheckbox() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.quote-checkbox');
+    const checkedBoxes = document.querySelectorAll('.quote-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedBoxes.length === 0) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    } else if (checkedBoxes.length === checkboxes.length) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    } else {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = true;
+    }
+}
+
+function updateSelectedCount() {
+    const checkedBoxes = document.querySelectorAll('.quote-checkbox:checked');
+    const countDiv = document.getElementById('selectedCount');
+    countDiv.textContent = `${checkedBoxes.length} quote${checkedBoxes.length !== 1 ? 's' : ''} selected`;
+}
+
+function copySelectedQuotes() {
+    const checkedBoxes = document.querySelectorAll('.quote-checkbox:checked');
+    
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one quote to copy.');
+        return;
+    }
+    
+    const selectedQuotes = Array.from(checkedBoxes).map(checkbox => {
+        const quoteId = checkbox.dataset.quoteId;
+        return allQuotesCache.find(q => q.id === quoteId);
+    }).filter(q => q !== undefined);
+    
+    const clipboardText = selectedQuotes.map(quote => {
+        return `Date: ${new Date(quote.date).toLocaleDateString()}\n` +
+               `Quote #: ${quote.qnum}\n` +
+               `Item: ${quote.item}\n` +
+               `Part #: ${quote.pn}\n` +
+               `Customer: ${quote.sold}\n` +
+               `Cost: $${formatPrice(quote.cprice)}\n` +
+               `Sell: $${formatPrice(quote.sprice)}\n` +
+               `Warranty: ${quote.warranty}\n` +
+               `Status: ${quote.status}\n` +
+               `Notes: ${quote.notes || 'None'}\n`;
+    }).join('\n---\n\n');
+    
+    navigator.clipboard.writeText(clipboardText).then(() => {
+        alert(`${selectedQuotes.length} quote(s) copied to clipboard!`);
+        
+        logActivity('quotes_copied', {
+            count: selectedQuotes.length
+        });
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        alert('Failed to copy quotes. Please try again.');
+    });
+}
+
+async function updateHotItemBadge(pn, itemName) {
+    try {
+        const isHot = await getHotItemStatus(pn, itemName);
+        const badgeSpan = document.getElementById('hotItemBadge');
+        
+        if (isHot) {
+            badgeSpan.innerHTML = '<span class="hot-item-badge">🔥 Hot Item</span>';
+        } else {
+            badgeSpan.innerHTML = '';
+        }
+    } catch (error) {
+        console.error('Error checking hot item status:', error);
+    }
+}
+
+async function getHotItemStatus(pn, itemName) {
+    const thirtyDaysAgo = Date.now() - (30 * 24 * 60 * 60 * 1000);
+    
+    try {
+        const snapshot = await database.ref('quotes')
+            .orderByChild('timestamp')
+            .startAt(thirtyDaysAgo)
+            .once('value');
+        
+        let count = 0;
+        snapshot.forEach((childSnapshot) => {
+            const quote = childSnapshot.val();
+            if (quote.pn === pn || quote.item === itemName) {
+                count++;
+            }
+        });
+        
+        return count >= 5;
+    } catch (error) {
+        console.error('Error getting hot item status:', error);
+        return false;
+    }
+}
+        let searchQuotesCache = [];
+
+async function fetchAllQuotesForSearch() {
+    try {
+        const snapshot = await database.ref('quotes').once('value');
+        searchQuotesCache = [];
+        
+        snapshot.forEach((childSnapshot) => {
+            const quote = childSnapshot.val();
+            quote.id = childSnapshot.key;
+            searchQuotesCache.push(quote);
+        });
+        
+        console.log(`Loaded ${searchQuotesCache.length} quotes for search`);
+    } catch (error) {
+        console.error('Error fetching quotes for search:', error);
+    }
+}
+
+function handlePriceHistorySearch() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+    
+    if (searchTerm === '') {
+        const tbody = document.getElementById('searchHistoryBody');
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">Search for an item to see history</td></tr>';
+        return;
+    }
+    
+    const matches = searchQuotesCache.filter(quote => 
+        quote.pn.toLowerCase().includes(searchTerm) || 
+        quote.item.toLowerCase().includes(searchTerm)
+    );
+    
+    filterAndDisplayQuotes(matches);
+}
+
+let currentSearchFilter = 'all';
+
+function handleTimeFilter(filter) {
+    currentSearchFilter = filter;
+    
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    event.target.classList.add('active');
+    
+    handlePriceHistorySearch();
+}
+
+function filterQuotesByTimeRange(quotes, filter) {
+    const now = Date.now();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    switch(filter) {
+        case 'today':
+            return quotes.filter(q => new Date(q.date).getTime() >= today.getTime());
+        
+        case 'week':
+            const weekAgo = now - (7 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= weekAgo);
+        
+        case 'month':
+            const monthAgo = now - (30 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= monthAgo);
+        
+        case 'year':
+            const yearAgo = now - (365 * 24 * 60 * 60 * 1000);
+            return quotes.filter(q => new Date(q.date).getTime() >= yearAgo);
+        
+        case 'all':
+        default:
+            return quotes;
+    }
+}
+
+function filterAndDisplayQuotes(matches) {
+    const filteredMatches = filterQuotesByTimeRange(matches, currentSearchFilter);
+    
+    filteredMatches.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const tbody = document.getElementById('searchHistoryBody');
+    tbody.innerHTML = '';
+    
+    if (filteredMatches.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: #9ca3af;">No results found</td></tr>';
+        return;
+    }
+    
+    filteredMatches.forEach(quote => {
+        const row = tbody.insertRow();
+        row.dataset.pn = quote.pn;
+        row.dataset.itemName = quote.item;
+        
+        const dateCell = row.insertCell();
+        dateCell.textContent = new Date(quote.date).toLocaleDateString();
+        
+        const itemCell = row.insertCell();
+        itemCell.textContent = quote.item;
+        
+        const pnCell = row.insertCell();
+        pnCell.textContent = quote.pn;
+        
+        const costCell = row.insertCell();
+        costCell.className = 'price-cell';
+        costCell.textContent = `$${formatPrice(quote.cprice)}`;
+        
+        const sellCell = row.insertCell();
+        sellCell.className = 'price-cell';
+        sellCell.textContent = `$${formatPrice(quote.sprice)}`;
+        
+        const statusCell = row.insertCell();
+        statusCell.className = 'status-cell';
+        const statusSelect = document.createElement('select');
+        statusSelect.style.width = '100%';
+        statusSelect.style.padding = '6px';
+        statusSelect.style.border = '1px solid #e5e7eb';
+        statusSelect.style.borderRadius = '4px';
+        statusSelect.innerHTML = `
+            <option value="Quoted" ${quote.status === 'Quoted' ? 'selected' : ''}>Quoted</option>
+            <option value="Sold" ${quote.status === 'Sold' ? 'selected' : ''}>Sold</option>
+            <option value="Lost Sale" ${quote.status === 'Lost Sale' ? 'selected' : ''}>Lost Sale</option>
+        `;
+        statusSelect.onchange = () => handleStatusChange(quote.id, statusSelect.value);
+        statusCell.appendChild(statusSelect);
+        
+        const actionsCell = row.insertCell();
+        actionsCell.innerHTML = `
+            <button class="action-button" data-action="edit-quote" data-quote='${JSON.stringify(quote)}' title="Edit Quote">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                </svg>
+            </button>
+            <button class="action-button create-order-btn" data-action="create-order" data-quote='${JSON.stringify(quote)}' title="Create Order">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+            </button>
+        `;
+    });
+}
+
+function toggleSearchSection() {
+    const searchContent = document.getElementById('searchContent');
+    if (searchContent.style.display === 'none') {
+        searchContent.style.display = 'block';
+    } else {
+        searchContent.style.display = 'none';
+    }
+}
+
+function updateMainView(pn, itemName) {
+    const urlParams = new URLSearchParams(window.location.search);
+    urlParams.set('pn', pn);
+    urlParams.set('item', itemName);
+    
+    const newUrl = `${window.location.pathname}?${urlParams.toString()}`;
+    window.history.pushState({}, '', newUrl);
+    
+    document.getElementById('itemName').textContent = itemName;
+    document.getElementById('partNumber').textContent = pn;
+    
+    updateHotItemBadge(pn, itemName);
+    
+    const manualDetails = document.getElementById('manualItemDetails');
+    const autoDetails = document.getElementById('autoItemDetails');
+    if (manualDetails.style.display !== 'none') {
+        manualDetails.style.display = 'none';
+        autoDetails.style.display = 'block';
+    }
+}
+
+function calculatePriceHistory(quotes) {
+    if (quotes.length === 0) return { avgCost: 0, avgSell: 0, minCost: 0, maxCost: 0, minSell: 0, maxSell: 0 };
+    
+    const costs = quotes.map(q => parseFloat(q.cprice)).filter(p => !isNaN(p));
+    const sells = quotes.map(q => parseFloat(q.sprice)).filter(p => !isNaN(p));
+    
+    return {
+        avgCost: costs.length > 0 ? (costs.reduce((a, b) => a + b, 0) / costs.length) : 0,
+        avgSell: sells.length > 0 ? (sells.reduce((a, b) => a + b, 0) / sells.length) : 0,
+        minCost: costs.length > 0 ? Math.min(...costs) : 0,
+        maxCost: costs.length > 0 ? Math.max(...costs) : 0,
+        minSell: sells.length > 0 ? Math.min(...sells) : 0,
+        maxSell: sells.length > 0 ? Math.max(...sells) : 0
+    };
+}
+
+function renderPriceHistoryChart(quotes) {
+    console.log('Price history chart rendering would go here');
+}
+
+let currentEditQuoteId = null;
+
+function openEditModal(quote) {
+    currentEditQuoteId = quote.id;
+    
+    document.getElementById('editQuoteId').value = quote.id;
+    document.getElementById('editItemName').value = quote.item;
+    document.getElementById('editPartNumber').value = quote.pn;
+    document.getElementById('editCustomer').value = quote.sold;
+    document.getElementById('editCostPrice').value = formatPrice(quote.cprice);
+    document.getElementById('editSellPrice').value = formatPrice(quote.sprice);
+    document.getElementById('editWarranty').value = quote.warranty;
+    document.getElementById('editStatus').value = quote.status;
+    document.getElementById('editNotes').value = quote.notes || '';
+    
+    const modal = document.getElementById('editModal');
+    modal.classList.add('visible');
+    document.body.classList.add('modal-open');
+}
+
+function closeEditModal() {
+    const modal = document.getElementById('editModal');
+    modal.classList.remove('visible');
+    document.body.classList.remove('modal-open');
+    currentEditQuoteId = null;
+}
+
+async function handleEditFormSubmit() {
+    if (!currentEditQuoteId) {
+        alert('No quote selected for editing.');
+        return;
+    }
+    
+    const updatedQuote = {
+        sold: document.getElementById('editCustomer').value,
+        cprice: parseFloat(document.getElementById('editCostPrice').value),
+        sprice: parseFloat(document.getElementById('editSellPrice').value),
+        warranty: document.getElementById('editWarranty').value,
+        status: document.getElementById('editStatus').value,
+        notes: document.getElementById('editNotes').value.trim(),
+        lastModified: new Date().toISOString(),
+        lastModifiedBy: currentUser.uid,
+        lastModifiedByEmail: currentUser.email
+    };
+    
+    try {
+        await database.ref(`quotes/${currentEditQuoteId}`).update(updatedQuote);
+        
+        await logActivity('quote_edited', {
+            quoteId: currentEditQuoteId
+        });
+        
+        alert('Quote updated successfully!');
+        closeEditModal();
+    } catch (error) {
+        console.error('Error updating quote:', error);
+        alert('Failed to update quote. Please try again.');
+    }
+}
+
+async function handleDeleteQuote() {
+    if (!currentEditQuoteId) {
+        alert('No quote selected for deletion.');
+        return;
+    }
+    
+    if (!confirm('Are you sure you want to delete this quote? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        await database.ref(`quotes/${currentEditQuoteId}`).remove();
+        
+        await logActivity('quote_deleted', {
+            quoteId: currentEditQuoteId
+        });
+        
+        alert('Quote deleted successfully!');
+        closeEditModal();
+    } catch (error) {
+        console.error('Error deleting quote:', error);
+        alert('Failed to delete quote. Please try again.');
+    }
+}
+        async function createBulkOrders() {
+    const checkedBoxes = document.querySelectorAll('.quote-checkbox:checked');
+    
+    if (checkedBoxes.length === 0) {
+        alert('Please select at least one quote to create orders.');
+        return;
+    }
+    
+    const selectedQuotes = Array.from(checkedBoxes).map(checkbox => {
+        const quoteId = checkbox.dataset.quoteId;
+        return allQuotesCache.find(q => q.id === quoteId);
+    }).filter(q => q !== undefined && q.status === 'Quoted');
+    
+    if (selectedQuotes.length === 0) {
+        alert('No valid quotes selected. Only quotes with "Quoted" status can be converted to orders.');
+        return;
+    }
+    
+    if (!confirm(`Create ${selectedQuotes.length} order(s) from selected quotes?`)) {
+        return;
+    }
+    
+    const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
+    const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
+    
+    let successCount = 0;
+    let failCount = 0;
+    
+    for (const quote of selectedQuotes) {
+        try {
+            const orderNum = await getNextOrderNumber();
+            
+            const orderData = {
+                "Order Num": orderNum,
+                "Part Num": quote.pn,
+                "Item": quote.item,
+                "Sold To": quote.sold,
+                "Cost Price": quote.cprice,
+                "Sell Price": quote.sprice,
+                "Warranty": quote.warranty,
+                "Notes": quote.notes || '',
+                "Quote Num": quote.qnum,
+                "Date": new Date().toISOString()
+            };
+            
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'ApplicationAccessKey': APPSHEET_CONFIG.API_KEY
+                },
+                body: JSON.stringify({
+                    "Action": "Add",
+                    "Properties": {},
+                    "Rows": [orderData]
+                })
+            });
+            
+            if (response.ok) {
+                await database.ref(`quotes/${quote.id}/status`).set('Sold');
+                await database.ref(`quotes/${quote.id}/orderNum`).set(orderNum);
+                
+                await logActivity('bulk_order_created', {
+                    quoteId: quote.id,
+                    orderNumber: orderNum,
+                    customer: quote.sold
+                });
+                
+                successCount++;
+            } else {
+                console.error(`Failed to create order for quote ${quote.qnum}`);
+                failCount++;
+            }
+            
+        } catch (error) {
+            console.error(`Error creating order for quote ${quote.qnum}:`, error);
+            failCount++;
+        }
+    }
+    
+    if (successCount > 0) {
+        alert(`Successfully created ${successCount} order(s)!${failCount > 0 ? ` ${failCount} failed.` : ''}`);
+        
+        checkedBoxes.forEach(checkbox => checkbox.checked = false);
+        updateSelectAllCheckbox();
+        updateSelectedCount();
+    } else {
+        alert('Failed to create any orders. Please try again.');
+    }
+}
+
+async function createOrderFromQuote(quote) {
+    if (quote.status !== 'Quoted') {
+        alert('Only quotes with "Quoted" status can be converted to orders.');
+        return;
+    }
+    
+    if (!confirm(`Create order for ${quote.item}?`)) {
+        return;
+    }
+    
+    try {
+        const orderNum = await getNextOrderNumber();
+        
+        const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
+        const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
+        
+        const orderData = {
+            "Order Num": orderNum,
+            "Part Num": quote.pn,
+            "Item": quote.item,
+            "Sold To": quote.sold,
+            "Cost Price": quote.cprice,
+            "Sell Price": quote.sprice,
+            "Warranty": quote.warranty,
+            "Notes": quote.notes || '',
+            "Quote Num": quote.qnum,
+            "Date": new Date().toISOString()
+        };
+        
+        const response = await fetch(API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'ApplicationAccessKey': APPSHEET_CONFIG.API_KEY
+            },
+            body: JSON.stringify({
+                "Action": "Add",
+                "Properties": {},
+                "Rows": [orderData]
+            })
+        });
+        
+        if (response.ok) {
+            await database.ref(`quotes/${quote.id}/status`).set('Sold');
+            await database.ref(`quotes/${quote.id}/orderNum`).set(orderNum);
+            
+            await logActivity('order_created', {
+                quoteId: quote.id,
+                orderNumber: orderNum,
+                customer: quote.sold
+            });
+            
+            alert(`Order ${orderNum} created successfully!`);
+        } else {
+            throw new Error('Failed to create order in AppSheet');
+        }
+        
+    } catch (error) {
+        console.error('Error creating order:', error);
+        alert('Failed to create order. Please try again.');
+    }
+}
+
+async function generatePDF() {
+    try {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        
+        doc.setFontSize(20);
+        doc.text('iMED ALL inc.', 105, 20, { align: 'center' });
+        
+        doc.setFontSize(16);
+        doc.text('Sales Quote', 105, 30, { align: 'center' });
+        
+        doc.setFontSize(12);
+        const itemName = document.getElementById('itemName').textContent;
+        const partNumber = document.getElementById('partNumber').textContent;
+        const customer = document.getElementById('customer').value;
+        const qnum = document.getElementById('qnum').value;
+        const cprice = document.getElementById('cprice').value;
+        const sprice = document.getElementById('sprice').value;
+        const warranty = document.getElementById('warranty').value;
+        const notes = document.getElementById('notes').value;
+        
+        let yPosition = 50;
+        
+        doc.text(`Quote Number: ${qnum}`, 20, yPosition);
+        yPosition += 10;
+        doc.text(`Date: ${new Date().toLocaleDateString()}`, 20, yPosition);
+        yPosition += 15;
+        
+        doc.text(`Customer: ${customer}`, 20, yPosition);
+        yPosition += 10;
+        doc.text(`Item Name: ${itemName}`, 20, yPosition);
+        yPosition += 10;
+        doc.text(`Part Number: ${partNumber}`, 20, yPosition);
+        yPosition += 15;
+        
+        doc.text(`Cost Price: $${formatPrice(cprice)} CAD`, 20, yPosition);
+        yPosition += 10;
+        doc.text(`Sell Price: $${formatPrice(sprice)} CAD`, 20, yPosition);
+        yPosition += 10;
+        doc.text(`Warranty: ${warranty}`, 20, yPosition);
+        yPosition += 15;
+        
+        if (notes && notes.trim() !== '') {
+            doc.text('Notes:', 20, yPosition);
+            yPosition += 7;
+            const splitNotes = doc.splitTextToSize(notes, 170);
+            doc.text(splitNotes, 20, yPosition);
+        }
+        
+        doc.save(`Quote_${qnum}.pdf`);
+        
+        await logActivity('pdf_generated', {
+            quoteNumber: qnum
+        });
+        
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        alert('Failed to generate PDF. Please try again.');
     }
 }
 
