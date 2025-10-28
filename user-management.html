@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Management - iMED ALL inc.</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f3f4f6;
+            min-height: 100vh;
+        }
+        .header {
+            background: linear-gradient(135deg, #2d7a7f 0%, #1f5a5e 100%);
+            color: white;
+            padding: 24px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        .user-info {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: white;
+            color: #2d7a7f;
+        }
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255,255,255,0.3);
+        }
+        .btn-secondary {
+            background: transparent;
+            color: white;
+            border: 2px solid white;
+        }
+        .btn-secondary:hover {
+            background: rgba(255,255,255,0.1);
+        }
+        .btn-danger {
+            background: #ef4444;
+            color: white;
+        }
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 32px;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+        .card h2 {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 16px;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+        input[type="email"], input[type="password"], input[type="text"], select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e5e7eb;
+            border-radius: 8px;
+            font-size: 16px;
+            font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        input:focus, select:focus {
+            outline: none;
+            border-color: #2d7a7f;
+            box-shadow: 0 0 0 3px rgba(45, 122, 127, 0.1);
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+        .message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .message.success {
+            background: #d1fae5;
+            color: #065f46;
+            border: 1px solid #6ee7b7;
+            display: block;
+        }
+        .message.error {
+            background: #fee2e2;
+            color: #991b1b;
+            border: 1px solid #fca5a5;
+            display: block;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        thead {
+            background: #f9fafb;
+        }
+        th {
+            text-align: left;
+            padding: 12px;
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        td {
+            padding: 12px;
+            color: #4b5563;
+            font-size: 14px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        .role-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .role-admin {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        .role-sales-rep {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+        .role-viewer {
+            background: #e5e7eb;
+            color: #374151;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-active {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        .status-disabled {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        .action-buttons .btn {
+            padding: 6px 12px;
+            font-size: 12px;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6b7280;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 12px;
+            }
+            table {
+                font-size: 12px;
+            }
+            th, td {
+                padding: 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>User Management</h1>
+        <div class="header-actions">
+            <span class="user-info" id="currentUserName">Loading...</span>
+            <button class="btn btn-secondary" onclick="goToSalesQuote()">Sales Quotes</button>
+            <button class="btn btn-secondary" onclick="logout()">Logout</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="accessDenied" style="display: none;" class="card">
+            <h2>Access Denied</h2>
+            <p style="color: #6b7280; margin-bottom: 20px;">You do not have permission to access this page. Only administrators can manage users.</p>
+            <button class="btn btn-primary" onclick="goToSalesQuote()">Go to Sales Quotes</button>
+        </div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="card">
+                <h2>Create New User</h2>
+                <div id="createMessage" class="message"></div>
+                <form id="createUserForm">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userName">Full Name</label>
+                            <input type="text" id="userName" required placeholder="John Doe">
+                        </div>
+                        <div class="form-group">
+                            <label for="userEmail">Email Address</label>
+                            <input type="email" id="userEmail" required placeholder="user@imedall.com">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="userPassword">Temporary Password</label>
+                            <input type="password" id="userPassword" required placeholder="Min. 8 characters">
+                        </div>
+                        <div class="form-group">
+                            <label for="userRole">Role</label>
+                            <select id="userRole" required>
+                                <option value="">Select Role...</option>
+                                <option value="Admin">Admin (Full Access)</option>
+                                <option value="Sales Rep">Sales Rep (Can Edit Own Quotes)</option>
+                                <option value="Viewer">Viewer (Read Only)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="createBtn" style="width: auto;">Create User</button>
+                </form>
+            </div>
+
+            <div class="card">
+                <h2>All Users</h2>
+                <div id="usersMessage" class="message"></div>
+                <div id="usersLoading" class="loading">Loading users...</div>
+                <table id="usersTable" style="display: none;">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Email</th>
+                            <th>Role</th>
+                            <th>Status</th>
+                            <th>Email Verified</th>
+                            <th>Created</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyCe0u6B6qA9y6xvSR_jbY1Do-ljPKy5Lu8",
+            authDomain: "imed-sales-quote.firebaseapp.com",
+            databaseURL: "https://imed-sales-quote-default-rtdb.firebaseio.com",
+            projectId: "imed-sales-quote",
+            storageBucket: "imed-sales-quote.firebasestorage.app",
+            messagingSenderId: "830326754595",
+            appId: "1:830326754595:web:ca03272749599736fad096",
+            measurementId: "G-6TCTDFX5PL"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const database = firebase.database();
+
+        let currentUser = null;
+        let currentUserData = null;
+
+        // Check authentication and authorization
+        firebase.auth().onAuthStateChanged(async (user) => {
+            if (!user || !user.emailVerified) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            currentUser = user;
+
+            // Get user data
+            const userSnapshot = await database.ref(`users/${user.uid}`).once('value');
+            currentUserData = userSnapshot.val();
+
+            if (!currentUserData || currentUserData.status !== 'active') {
+                await auth.signOut();
+                window.location.href = 'login.html';
+                return;
+            }
+
+            // Check if user is admin
+            if (currentUserData.role !== 'Admin') {
+                document.getElementById('accessDenied').style.display = 'block';
+                return;
+            }
+
+            // Show main content
+            document.getElementById('currentUserName').textContent = currentUserData.name;
+            document.getElementById('mainContent').style.display = 'block';
+
+            // Load users
+            loadUsers();
+
+            // Log activity
+            database.ref('activityLog').push({
+                userId: user.uid,
+                userEmail: user.email,
+                action: 'accessed_user_management',
+                timestamp: Date.now(),
+                date: new Date().toISOString()
+            });
+        });
+
+        // Create user form handler
+        document.getElementById('createUserForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const name = document.getElementById('userName').value.trim();
+            const email = document.getElementById('userEmail').value.trim();
+            const password = document.getElementById('userPassword').value;
+            const role = document.getElementById('userRole').value;
+            const createBtn = document.getElementById('createBtn');
+            const messageDiv = document.getElementById('createMessage');
+
+            if (password.length < 8) {
+                messageDiv.className = 'message error';
+                messageDiv.textContent = 'Password must be at least 8 characters long.';
+                messageDiv.style.display = 'block';
+                return;
+            }
+
+            createBtn.disabled = true;
+            createBtn.textContent = 'Creating...';
+            messageDiv.style.display = 'none';
+
+            try {
+                // Note: Creating users requires Firebase Admin SDK or Cloud Functions
+                // For now, we'll use a workaround: create user via client SDK
+                // then sign back in as admin
+
+                // Save current user
+                const adminEmail = currentUser.email;
+                const adminPassword = prompt('Please enter YOUR password to create this user:');
+                if (!adminPassword) {
+                    createBtn.disabled = false;
+                    createBtn.textContent = 'Create User';
+                    return;
+                }
+
+                // Create new user
+                const newUserCredential = await auth.createUserWithEmailAndPassword(email, password);
+                const newUser = newUserCredential.user;
+
+                // Send verification email
+                await newUser.sendEmailVerification();
+
+                // Create user profile in database
+                await database.ref(`users/${newUser.uid}`).set({
+                    uid: newUser.uid,
+                    email: email,
+                    name: name,
+                    role: role,
+                    status: 'active',
+                    createdAt: Date.now(),
+                    createdDate: new Date().toISOString(),
+                    createdBy: currentUser.uid,
+                    createdByEmail: currentUser.email,
+                    emailVerified: false
+                });
+
+                // Log the activity
+                await database.ref('activityLog').push({
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    action: 'user_created',
+                    targetUserId: newUser.uid,
+                    targetUserEmail: email,
+                    targetUserRole: role,
+                    timestamp: Date.now(),
+                    date: new Date().toISOString()
+                });
+
+                // Sign out new user and sign back in as admin
+                await auth.signOut();
+                await auth.signInWithEmailAndPassword(adminEmail, adminPassword);
+
+                messageDiv.className = 'message success';
+                messageDiv.textContent = `User created successfully! A verification email has been sent to ${email}.`;
+                messageDiv.style.display = 'block';
+
+                // Reset form
+                document.getElementById('createUserForm').reset();
+                
+                // Reload users list
+                loadUsers();
+
+            } catch (error) {
+                console.error('Create user error:', error);
+                let errorMessage = 'Failed to create user. Please try again.';
+
+                switch (error.code) {
+                    case 'auth/email-already-in-use':
+                        errorMessage = 'This email is already registered.';
+                        break;
+                    case 'auth/invalid-email':
+                        errorMessage = 'Invalid email address.';
+                        break;
+                    case 'auth/weak-password':
+                        errorMessage = 'Password is too weak.';
+                        break;
+                    case 'auth/wrong-password':
+                        errorMessage = 'Incorrect admin password.';
+                        break;
+                }
+
+                messageDiv.className = 'message error';
+                messageDiv.textContent = errorMessage;
+                messageDiv.style.display = 'block';
+            }
+
+            createBtn.disabled = false;
+            createBtn.textContent = 'Create User';
+        });
+
+        // Load all users
+        async function loadUsers() {
+            const loadingDiv = document.getElementById('usersLoading');
+            const tableDiv = document.getElementById('usersTable');
+            const tbody = document.getElementById('usersTableBody');
+
+            loadingDiv.style.display = 'block';
+            tableDiv.style.display = 'none';
+
+            try {
+                const snapshot = await database.ref('users').once('value');
+                const users = [];
+
+                snapshot.forEach((childSnapshot) => {
+                    users.push(childSnapshot.val());
+                });
+
+                // Sort by creation date (newest first)
+                users.sort((a, b) => b.createdAt - a.createdAt);
+
+                tbody.innerHTML = '';
+
+                users.forEach(user => {
+                    const tr = document.createElement('tr');
+                    
+                    // Convert role to CSS class (handle spaces)
+                    const roleClass = `role-${user.role.toLowerCase().replace(/ /g, '-')}`;
+                    const statusClass = user.status === 'active' ? 'status-active' : 'status-disabled';
+                    const verifiedIcon = user.emailVerified ? '✓' : '✗';
+                    const createdDate = new Date(user.createdAt).toLocaleDateString();
+
+                    tr.innerHTML = `
+                        <td><strong>${user.name}</strong></td>
+                        <td>${user.email}</td>
+                        <td><span class="role-badge ${roleClass}">${formatRole(user.role)}</span></td>
+                        <td><span class="status-badge ${statusClass}">${user.status}</span></td>
+                        <td>${verifiedIcon}</td>
+                        <td>${createdDate}</td>
+                        <td>
+                            <div class="action-buttons">
+                                ${user.uid !== currentUser.uid ? `
+                                    <button class="btn ${user.status === 'active' ? 'btn-danger' : 'btn-success'}" 
+                                            onclick="toggleUserStatus('${user.uid}', '${user.status}', '${user.email}')">
+                                        ${user.status === 'active' ? 'Disable' : 'Enable'}
+                                    </button>
+                                    <button class="btn btn-primary" onclick="changeUserRole('${user.uid}', '${user.role}', '${user.email}')">
+                                        Change Role
+                                    </button>
+                                ` : '<em style="color: #9ca3af;">Current User</em>'}
+                            </div>
+                        </td>
+                    `;
+
+                    tbody.appendChild(tr);
+                });
+
+                loadingDiv.style.display = 'none';
+                tableDiv.style.display = 'table';
+
+            } catch (error) {
+                console.error('Error loading users:', error);
+                loadingDiv.innerHTML = '<p style="color: #ef4444;">Error loading users. Please refresh the page.</p>';
+            }
+        }
+
+        // Format role for display (no longer needed - roles are already formatted)
+        function formatRole(role) {
+            return role;
+        }
+
+        // Toggle user status
+        async function toggleUserStatus(userId, currentStatus, userEmail) {
+            const newStatus = currentStatus === 'active' ? 'disabled' : 'active';
+            const action = newStatus === 'disabled' ? 'disable' : 'enable';
+
+            if (!confirm(`Are you sure you want to ${action} ${userEmail}?`)) {
+                return;
+            }
+
+            try {
+                await database.ref(`users/${userId}/status`).set(newStatus);
+
+                // Log activity
+                await database.ref('activityLog').push({
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    action: `user_${action}d`,
+                    targetUserId: userId,
+                    targetUserEmail: userEmail,
+                    timestamp: Date.now(),
+                    date: new Date().toISOString()
+                });
+
+                const messageDiv = document.getElementById('usersMessage');
+                messageDiv.className = 'message success';
+                messageDiv.textContent = `User ${action}d successfully.`;
+                messageDiv.style.display = 'block';
+
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+
+                loadUsers();
+            } catch (error) {
+                alert('Error updating user status: ' + error.message);
+            }
+        }
+
+        // Change user role
+        async function changeUserRole(userId, currentRole, userEmail) {
+            const newRole = prompt(`Change role for ${userEmail}\n\nEnter new role:\n- Admin\n- Sales Rep\n- Viewer`, currentRole);
+            
+            if (!newRole || newRole === currentRole) {
+                return;
+            }
+
+            if (!['Admin', 'Sales Rep', 'Viewer'].includes(newRole)) {
+                alert('Invalid role. Please enter: Admin, Sales Rep, or Viewer');
+                return;
+            }
+
+            try {
+                await database.ref(`users/${userId}/role`).set(newRole);
+
+                // Log activity
+                await database.ref('activityLog').push({
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    action: 'user_role_changed',
+                    targetUserId: userId,
+                    targetUserEmail: userEmail,
+                    oldRole: currentRole,
+                    newRole: newRole,
+                    timestamp: Date.now(),
+                    date: new Date().toISOString()
+                });
+
+                const messageDiv = document.getElementById('usersMessage');
+                messageDiv.className = 'message success';
+                messageDiv.textContent = 'User role updated successfully.';
+                messageDiv.style.display = 'block';
+
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+
+                loadUsers();
+            } catch (error) {
+                alert('Error updating user role: ' + error.message);
+            }
+        }
+
+        // Navigation functions
+        function goToSalesQuote() {
+            window.location.href = 'sales-quote.html';
+        }
+
+        async function logout() {
+            if (confirm('Are you sure you want to logout?')) {
+                await database.ref('activityLog').push({
+                    userId: currentUser.uid,
+                    userEmail: currentUser.email,
+                    action: 'logout',
+                    timestamp: Date.now(),
+                    date: new Date().toISOString()
+                });
+                await auth.signOut();
+                window.location.href = 'login.html';
+            }
+        }
+    </script>
+</body>
+</html>
