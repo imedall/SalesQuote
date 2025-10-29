@@ -3313,6 +3313,8 @@ Continue?`;
                     purchaseType: purchaseType,
                     outrightPrice: prices.outright,
                     exchangePrice: prices.exchange,
+                    oemOutrightPrice: prices.oemOutright,
+                    oemExchangePrice: prices.oemExchange,
                     imageUrl: imageUrl,
                     lastUpdated: new Date().toISOString(),
                     success: true
@@ -3340,7 +3342,12 @@ Continue?`;
         }
 
       function extractPrices(html, purchaseType) {
-            const prices = { outright: null, exchange: null };
+            const prices = { 
+                outright: null, 
+                exchange: null,
+                oemOutright: null,
+                oemExchange: null
+            };
             
             // PRIMARY REGEX: Original pattern for lbl-bold price class
             const priceRegex = /<span[^>]*class="[^"]*lbl-bold price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/gi;
@@ -3370,7 +3377,7 @@ Continue?`;
                 const fallbackRegex2 = /<span[^>]*>\s*\$\s*([\d,]+\.?\d*)/gi;
                 while ((match = fallbackRegex2.exec(html)) !== null) {
                     const priceValue = parseFloat(match[1].replace(/,/g, ''));
-                    if (!isNaN(priceValue) && priceValue > 10) { // Filter out low values that might be other numbers
+                    if (!isNaN(priceValue) && priceValue > 10) {
                         matches.push(priceValue);
                     }
                 }
@@ -3401,26 +3408,47 @@ Continue?`;
             console.log('Price extraction - Found matches:', matches);
             console.log('Purchase type:', purchaseType);
             
-            if (purchaseType.toUpperCase() === 'EXCHANGE' && matches.length > 0) {
-                prices.exchange = matches[0];
-                if (matches.length > 1) {
-                    const exchangePrice = matches[0];
-                    for (let i = 1; i < matches.length; i++) {
-                        if (matches[i] > exchangePrice) {
-                            prices.outright = matches[i];
-                            break;
-                        }
-                    }
+            // Sort prices to identify refurb vs OEM (typically refurb is lower)
+            const sortedMatches = [...matches].sort((a, b) => a - b);
+            
+            if (purchaseType.toUpperCase() === 'EXCHANGE') {
+                // For EXCHANGE type, expect up to 4 prices:
+                // [0] = Refurb Exchange (lowest)
+                // [1] = Refurb Outright
+                // [2] = OEM Exchange
+                // [3] = OEM Outright (highest)
+                if (sortedMatches.length >= 1) prices.exchange = sortedMatches[0];
+                if (sortedMatches.length >= 2) prices.outright = sortedMatches[1];
+                if (sortedMatches.length >= 3) prices.oemExchange = sortedMatches[2];
+                if (sortedMatches.length >= 4) prices.oemOutright = sortedMatches[3];
+            } else if (purchaseType.toUpperCase() === 'OUTRIGHT') {
+                // For OUTRIGHT type, expect up to 2 prices:
+                // [0] = Refurb Outright (lower)
+                // [1] = OEM Outright (higher)
+                if (sortedMatches.length >= 1) prices.outright = sortedMatches[0];
+                if (sortedMatches.length >= 2) prices.oemOutright = sortedMatches[1];
+             } else {
+                // Unknown type - intelligently assign based on number of prices found
+                if (sortedMatches.length === 1) {
+                    // Only 1 price - assume it's refurb outright
+                    prices.outright = sortedMatches[0];
+                } else if (sortedMatches.length === 2) {
+                    // 2 prices - assume refurb and OEM outright
+                    prices.outright = sortedMatches[0];
+                    prices.oemOutright = sortedMatches[1];
+                } else if (sortedMatches.length >= 3) {
+                    // 3+ prices - assume: refurb outright, OEM exchange, OEM outright
+                    prices.outright = sortedMatches[0];
+                    prices.oemExchange = sortedMatches[1];
+                    prices.oemOutright = sortedMatches[2];
                 }
-            } else if (purchaseType.toUpperCase() === 'OUTRIGHT' && matches.length > 0) {
-                prices.outright = matches[0];
-            } else if (matches.length > 0) {
-                prices.outright = matches[0];
             }
             
             console.log('Final extracted prices:', prices);
             return prices;
         }
+            
+             
 
 
         function extractImageUrl(html, partNumber) {
@@ -3531,12 +3559,26 @@ Continue?`;
                 let html = '<div>';
                 html += `<p style="margin: 0 0 8px 0; color: #374151; font-weight: 600; font-size: 14px;">Purchase Type: ${cachedPrice.purchaseType}</p>`;
                 
-                if (cachedPrice.outrightPrice) {
-                    html += `<p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(cachedPrice.outrightPrice)}</p>`;
+                // Refurbished Prices Section
+                if (cachedPrice.outrightPrice || cachedPrice.exchangePrice) {
+                    html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
+                    if (cachedPrice.exchangePrice) {
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(cachedPrice.exchangePrice)}</p>`;
+                    }
+                    if (cachedPrice.outrightPrice) {
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(cachedPrice.outrightPrice)}</p>`;
+                    }
                 }
                 
-                if (cachedPrice.exchangePrice) {
-                    html += `<p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(cachedPrice.exchangePrice)}</p>`;
+                // OEM New Prices Section
+                if (cachedPrice.oemOutrightPrice || cachedPrice.oemExchangePrice) {
+                    html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
+                    if (cachedPrice.oemExchangePrice) {
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(cachedPrice.oemExchangePrice)}</p>`;
+                    }
+                    if (cachedPrice.oemOutrightPrice) {
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(cachedPrice.oemOutrightPrice)}</p>`;
+                    }
                 }
                 
                 const color = ageInDays > 7 ? '#f59e0b' : (ageInDays > 3 ? '#f97316' : '#22c55e');
@@ -3549,6 +3591,8 @@ Continue?`;
                     purchaseType: cachedPrice.purchaseType,
                     outrightPrice: cachedPrice.outrightPrice,
                     exchangePrice: cachedPrice.exchangePrice,
+                    oemOutrightPrice: cachedPrice.oemOutrightPrice,
+                    oemExchangePrice: cachedPrice.oemExchangePrice,
                     lastUpdated: cachedPrice.lastUpdated
                 });
                 refreshBtn.disabled = false;
@@ -3575,8 +3619,26 @@ Continue?`;
                             html += `<p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(lastPrice.outrightPrice)}</p>`;
                         }
                         
-                        if (lastPrice.exchangePrice) {
-                            html += `<p style="margin: 0 0 4px 0; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(lastPrice.exchangePrice)}</p>`;
+                        // Refurbished Prices
+                        if (lastPrice.outrightPrice || lastPrice.exchangePrice) {
+                            html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
+                            if (lastPrice.exchangePrice) {
+                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(lastPrice.exchangePrice)}</p>`;
+                            }
+                            if (lastPrice.outrightPrice) {
+                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(lastPrice.outrightPrice)}</p>`;
+                            }
+                        }
+                        
+                        // OEM New Prices
+                        if (lastPrice.oemOutrightPrice || lastPrice.oemExchangePrice) {
+                            html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
+                            if (lastPrice.oemExchangePrice) {
+                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(lastPrice.oemExchangePrice)}</p>`;
+                            }
+                            if (lastPrice.oemOutrightPrice) {
+                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(lastPrice.oemOutrightPrice)}</p>`;
+                            }
                         }
                         
                         html += `<p style="margin: 8px 0 0 0; color: #92400e; font-size: 11px; font-style: italic;">Price cached from ${ageText}</p>`;
