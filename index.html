@@ -1160,12 +1160,13 @@
                     </div>
                     <div id="manualItemDetails" style="display: none;">
                         <div class="form-group">
-                            <label for="manualItemName">Item Name:</label>
-                            <input type="text" id="manualItemName" placeholder="Enter item name">
-                        </div>
-                        <div class="form-group">
                             <label for="manualPartNumber">Part Number:</label>
                             <input type="text" id="manualPartNumber" placeholder="Enter part number">
+                        </div>
+                        <div class="form-group">
+                            <label for="manualItemName">Item Name:</label>
+                            <input type="text" id="manualItemName" placeholder="Enter item name">
+                            <small style="color: #6b7280; font-size: 12px; margin-top: 4px; display: block;">Auto-fills from Siemens (editable)</small>
                         </div>
                     </div>
                 </section>
@@ -1547,6 +1548,13 @@
         <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
                 <h4>Select Item Number for Exchange</h4>
+                <div style="margin-top: 12px; padding: 12px; background: #f0f9ff; border-radius: 8px; border: 1px solid #3b82f6;">
+                    <label style="display: flex; align-items: center; cursor: pointer; margin: 0;">
+                        <input type="checkbox" id="applyPOToAll" style="width: auto; margin-right: 8px;">
+                        <span style="font-weight: 600; color: #1e40af;">Apply same PO to all selected items</span>
+                    </label>
+                    <input type="text" id="globalSoldPO" placeholder="Enter PO number for all items" style="width: 100%; padding: 8px 12px; border: 2px solid #3b82f6; border-radius: 6px; font-size: 14px; margin-top: 8px; display: none;">
+                </div>
             </div>
             <div class="modal-body" id="itemSelectionContainer" style="max-height: 60vh;">
                 <div class="spinner"></div>
@@ -2130,6 +2138,100 @@ let siemensStockCache = null;
             } else {
                 autoDetails.style.display = 'none';
                 manualDetails.style.display = 'block';
+                
+                // Add event listener for PartsSource search when manual entry is shown
+                const manualPnInput = document.getElementById('manualPartNumber');
+                if (manualPnInput && !manualPnInput.dataset.listenerAdded) {
+                    manualPnInput.dataset.listenerAdded = 'true';
+                    manualPnInput.addEventListener('input', debounce(async (e) => {
+                        const pn = e.target.value.trim();
+                        if (pn.length > 2) {
+                            await searchPartsSourceForItemName(pn);
+                        } else {
+                            document.getElementById('manualItemName').value = '';
+                        }
+                    }, 500));
+                }
+            }
+        }
+
+        // Debounce helper function
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // Search Siemens Healthineers for item name based on part number
+        async function searchPartsSourceForItemName(partNumber) {
+            const manualItemNameInput = document.getElementById('manualItemName');
+            
+            try {
+                // Show loading state
+                manualItemNameInput.value = 'Searching...';
+                
+                // Use the product page URL
+                const productUrl = `https://www.shop.siemens-healthineers.com/en-us/product/${partNumber}`;
+                
+                // Use CORS proxy to fetch page
+                const proxyUrl = 'https://api.allorigins.win/get?url=';
+                const response = await fetch(proxyUrl + encodeURIComponent(productUrl));
+                const data = await response.json();
+                
+                if (!data.contents) {
+                    manualItemNameInput.value = '';
+                    return;
+                }
+                
+                // Parse the HTML response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(data.contents, 'text/html');
+                
+                let itemName = '';
+                
+                // Try to extract from <title> tag first (most reliable for server-rendered content)
+                const titleTag = doc.querySelector('title');
+                if (titleTag) {
+                    itemName = titleTag.textContent;
+                    // Title format is usually: "Product Name | Siemens Healthineers Shop"
+                    itemName = itemName.split('|')[0].trim();
+                }
+                
+                // If title doesn't work or seems wrong, try other methods
+                if (!itemName || itemName.toLowerCase().includes('siemens healthineers shop') || itemName.length < 3) {
+                    // Try meta og:title
+                    const ogTitle = doc.querySelector('meta[property="og:title"]');
+                    if (ogTitle) {
+                        itemName = ogTitle.getAttribute('content');
+                        itemName = itemName.split('|')[0].trim();
+                    }
+                }
+                
+                // Clean up the name
+                if (itemName) {
+                    itemName = itemName.replace(/\s+/g, ' ').trim();
+                    itemName = itemName.replace(/\s*[-|]\s*Siemens.*$/i, '');
+                    itemName = itemName.trim();
+                    
+                    // Validate - must be at least 3 characters and not just "Siemens Healthineers Shop"
+                    if (itemName.length >= 3 && !itemName.toLowerCase().includes('siemens healthineers shop')) {
+                        manualItemNameInput.value = itemName;
+                    } else {
+                        manualItemNameInput.value = '';
+                    }
+                } else {
+                    manualItemNameInput.value = '';
+                }
+                
+            } catch (error) {
+                console.error('Error searching Siemens:', error);
+                manualItemNameInput.value = '';
             }
         }
 
@@ -2984,9 +3086,13 @@ function openEditModal(quote) {
         // ===================================
         function updateSelectionDisplay(quoteId, radioElement) {
             const display = document.getElementById(`display-${quoteId}`);
-            // Get the text from the <label> that the radio button is inside of
-            const labelText = radioElement.parentElement.textContent.trim(); 
-            display.textContent = `Selected: ${labelText}`;
+            const value = radioElement.value;
+            
+            if (value === 'skip') {
+                display.textContent = 'Skip';
+            } else {
+                display.textContent = value;
+            }
             
             // Auto-collapse
             const body = document.getElementById(`body-${quoteId}`);
@@ -3082,6 +3188,7 @@ function openEditModal(quote) {
             // Create the new collapsible structure for each item
             for (const quote of quotes) {
                 const quoteId = quote.id;
+                const existingSoldPO = quote.soldPO || '';
                 allItemsHtml += `
                     <div class="item-selection-group" id="group-${quoteId}" style="margin-bottom: 12px; border: 1px solid #e5e7eb; border-radius: 8px;">
                         <div class="item-selection-header" onclick="toggleSelectionGroup('${quoteId}')">
@@ -3094,6 +3201,10 @@ function openEditModal(quote) {
                             <span class="toggle-icon" id="icon-${quoteId}">▲</span>
                         </div>
                         <div class="item-selection-body" id="body-${quoteId}" style="padding: 0 16px 16px 16px;">
+                            <div class="form-group" style="margin-bottom: 16px;">
+                                <label for="soldPO-${quoteId}" style="font-weight: 600; color: #374151; margin-bottom: 8px; display: block;">Sold PO:</label>
+                                <input type="text" id="soldPO-${quoteId}" value="${existingSoldPO}" placeholder="Enter PO number (optional)" style="width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px;">
+                            </div>
                             <div id="stock-list-${quoteId}">
                                 <p style="color: #6b7280;">Loading matching stock...</p>
                             </div>
@@ -3120,22 +3231,34 @@ function openEditModal(quote) {
                 if (stockItems && stockItems.length > 0) {
                     // Add the "Skip" option first, and check it by default
                     stockHtml += `
-                        <div class="form-group" style="padding: 8px; background: #f9fafb; border-radius: 6px; border: 2px solid #3b82f6; margin-top: 12px;">
-                            <label style="cursor: pointer; font-weight: bold; margin-bottom: 0;">
+                        <div class="form-group" style="padding: 12px; background: #f0f9ff; border-radius: 8px; border: 2px solid #3b82f6; margin-top: 12px;">
+                            <label style="cursor: pointer; font-weight: bold; margin-bottom: 0; display: flex; align-items: center;">
                                 <input type="radio" name="item-select-${quoteId}" value="skip" checked 
                                        onchange="updateSelectionDisplay('${quoteId}', this)" 
-                                       style="width: auto; margin-right: 8px;">
-                                Skip (Don't assign an Item Number)
+                                       style="width: auto; margin-right: 12px;">
+                                <span>Skip (Don't assign an Item Number)</span>
                             </label>
                         </div>
                     `;
                     // Set default display text
-                    display.textContent = "Selected: Skip (Don't assign an Item Number)";
+                    display.textContent = "Skip";
                     
-                    // Add each matching stock item as a radio button
+                    // Add table header
+                    stockHtml += `
+                        <div style="margin-top: 16px; border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
+                            <div style="display: grid; grid-template-columns: 40px 1fr 2fr 1.5fr 1.5fr; gap: 12px; padding: 12px; background: #f9fafb; border-bottom: 2px solid #e5e7eb; font-weight: 600; font-size: 13px; color: #374151;">
+                                <div></div>
+                                <div>Item</div>
+                                <div>Condition</div>
+                                <div>Location</div>
+                                <div>Verified Date</div>
+                            </div>
+                    `;
+                    
+                    // Add each matching stock item as a radio button in table row format
                     stockItems.forEach(item => {
                         const itemNum = item[itemNumCol] || 'N/A';
-                        const condition = item[conditionCol] || 'N/A'; // <-- FIX: Using correct column
+                        const condition = item[conditionCol] || 'N/A';
                         const location = item[locationCol] || 'N/A';
                         
                         // Handle the date formatting
@@ -3144,25 +3267,28 @@ function openEditModal(quote) {
                             try {
                                 verifiedDate = new Date(item[verifiedCol]).toLocaleDateString("en-US");
                             } catch (e) {
-                                verifiedDate = item[verifiedCol]; // fallback to raw string
+                                verifiedDate = item[verifiedCol];
                             }
                         }
                         
-                        // Using your requested labels
                         stockHtml += `
-                            <div class="form-group" style="padding: 8px; background: #f9fafb; border-radius: 6px; margin-top: 8px;">
-                                <label style="cursor: pointer; font-size: 14px; line-height: 1.5; display: block; margin-bottom: 0;">
+                            <label style="display: grid; grid-template-columns: 40px 1fr 2fr 1.5fr 1.5fr; gap: 12px; padding: 12px; background: white; border-bottom: 1px solid #e5e7eb; cursor: pointer; align-items: start; margin-bottom: 0; transition: background 0.2s;" 
+                                   onmouseover="this.style.background='#f9fafb'" 
+                                   onmouseout="this.style.background='white'">
+                                <div style="display: flex; align-items: start; padding-top: 2px;">
                                     <input type="radio" name="item-select-${quoteId}" value="${itemNum}" 
                                            onchange="updateSelectionDisplay('${quoteId}', this)" 
-                                           style="width: auto; margin-right: 8px;">
-                                    <strong>Item:</strong> ${itemNum} | 
-                                    <strong>Condition:</strong> ${condition} | 
-                                    <strong>Location:</strong> ${location} | 
-                                    <strong>Verrified Date:</strong> ${verifiedDate}
-                                </label>
-                            </div>
+                                           style="width: auto; margin: 0;">
+                                </div>
+                                <div style="font-weight: 600; color: #2d7a7f; font-size: 14px;">${itemNum}</div>
+                                <div style="font-size: 13px; color: #4b5563; line-height: 1.4;">${condition}</div>
+                                <div style="font-size: 13px; color: #4b5563;">${location}</div>
+                                <div style="font-size: 13px; color: #4b5563;">${verifiedDate}</div>
+                            </label>
                         `;
                     });
+                    
+                    stockHtml += `</div>`;
                 } else {
                     // No stock found
                     stockHtml = `
@@ -3197,6 +3323,27 @@ async function processAndSendExchanges() {
                 return;
             }
             
+            // Collect Sold PO values from modal BEFORE closing it
+            const soldPOValues = {};
+            const applyPOToAll = document.getElementById('applyPOToAll');
+            const globalSoldPO = document.getElementById('globalSoldPO');
+            
+            // If "Apply PO to All" is checked, use the global PO for all quotes
+            if (applyPOToAll && applyPOToAll.checked && globalSoldPO) {
+                const globalPO = globalSoldPO.value.trim();
+                for (const quote of quotesToProcess) {
+                    soldPOValues[quote.id] = globalPO;
+                }
+            } else {
+                // Otherwise, collect individual PO values
+                for (const quote of quotesToProcess) {
+                    const soldPOInput = document.getElementById(`soldPO-${quote.id}`);
+                    if (soldPOInput) {
+                        soldPOValues[quote.id] = soldPOInput.value.trim();
+                    }
+                }
+            }
+            
             // Show loading message
             const loadingMessage = document.createElement('div');
             loadingMessage.style.cssText = 'position: fixed; top: 20px; right: 20px; background: #2d7a7f; color: white; padding: 16px 24px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3); z-index: 10000; font-size: 14px;';
@@ -3219,6 +3366,21 @@ async function processAndSendExchanges() {
                     
                     const outrightPrice = quote.outrightPrice ? parseFloat(quote.outrightPrice) : null;
                     const exchangePrice = quote.exchangePrice ? parseFloat(quote.exchangePrice) : null;
+                    
+                    // Get the Sold PO from what user entered in the modal
+                    const soldPO = soldPOValues[quote.id] || '';
+                    
+                    // Update quote in Firebase with the new Sold PO if provided
+                    if (soldPO && soldPO !== quote.soldPO) {
+                        try {
+                            await database.ref(`quotes/${quote.id}`).update({
+                                soldPO: soldPO
+                            });
+                            await logActivity('update_quote', quote.id, `Added Sold PO: ${soldPO}`);
+                        } catch (error) {
+                            console.error(`Error updating Sold PO for quote ${quote.id}:`, error);
+                        }
+                    }
                     
                     // *** FIX: Check for valid customer and PN ***
                     const hasCustomer = quote.sold && quote.sold.trim() !== '';
@@ -3248,8 +3410,8 @@ async function processAndSendExchanges() {
                     if (quote.notes && quote.notes.trim() !== '') {
                         exchangeRow["Notes"] = quote.notes;
                     }
-                    if (quote.soldPO && quote.soldPO.trim() !== '') {
-                        exchangeRow["Sold PO"] = quote.soldPO;
+                    if (soldPO) {
+                        exchangeRow["Sold PO"] = soldPO;
                     }
                     
                     exchangeRows.push(exchangeRow);
@@ -5379,6 +5541,26 @@ async function processAndSendExchanges() {
             const confirmExchangeBtn = document.getElementById('confirmExchangeCreationBtn');
             if (confirmExchangeBtn) {
                 confirmExchangeBtn.addEventListener('click', processAndSendExchanges);
+            }
+
+            // Set up Apply PO to All checkbox listener
+            const applyPOToAllCheckbox = document.getElementById('applyPOToAll');
+            const globalSoldPOInput = document.getElementById('globalSoldPO');
+            if (applyPOToAllCheckbox && globalSoldPOInput) {
+                applyPOToAllCheckbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        globalSoldPOInput.style.display = 'block';
+                        // When checked, sync the global PO to all individual fields
+                        globalSoldPOInput.addEventListener('input', function() {
+                            const allPOInputs = document.querySelectorAll('[id^="soldPO-"]');
+                            allPOInputs.forEach(input => {
+                                input.value = globalSoldPOInput.value;
+                            });
+                        });
+                    } else {
+                        globalSoldPOInput.style.display = 'none';
+                    }
+                });
             }
 // Set up All Prices Modal close
             const closeAllPricesBtn = document.getElementById('closeAllPricesModal');
