@@ -4600,55 +4600,7 @@ async function processAndSendExchanges() {
             }
         }
 
-        async function getNextOrderNumber() {
-            try {
-                const encodedTableName = encodeURIComponent(APPSHEET_CONFIG.ORDERS_TABLE);
-                const API_URL = `https://api.appsheet.com/api/v2/apps/${APPSHEET_CONFIG.APP_ID}/tables/${encodedTableName}/Action`;
-                
-                const response = await fetch(API_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'ApplicationAccessKey': APPSHEET_CONFIG.API_KEY
-                    },
-                    body: JSON.stringify({
-                        "Action": "Find",
-                        "Properties": {},
-                        "Rows": []
-                    })
-                });
-                
-                let maxOrderNum = 0;
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (Array.isArray(data)) {
-                        data.forEach(order => {
-                            const orderNum = order["Order Num"];
-                            if (orderNum && orderNum.startsWith("SO-")) {
-                                const num = parseInt(orderNum.replace("SO-", ""));
-                                if (!isNaN(num) && num > maxOrderNum) {
-                                    maxOrderNum = num;
-                                }
-                            }
-                        });
-                    }
-                }
-                
-                const counterRef = database.ref('orderCounter');
-                const snapshot = await counterRef.once('value');
-                const firebaseCounter = snapshot.val() || 0;
-                
-                const nextNumber = Math.max(maxOrderNum, firebaseCounter) + 1;
-                
-                await counterRef.set(nextNumber);
-                
-                return `SO-${nextNumber}`;
-            } catch (error) {
-                console.error("Error generating order number:", error);
-                return `SO-${Date.now()}`;
-            }
-        }
+         
 
         // ===================================
         // QUOTE EXPIRATION CHECK
