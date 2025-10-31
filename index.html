@@ -3377,6 +3377,13 @@ async function processAndSendExchanges() {
                                 soldPO: soldPO
                             });
                             await logActivity('update_quote', quote.id, `Added Sold PO: ${soldPO}`);
+                            
+                            // *** FIX: Update the local cache immediately ***
+                            const cacheIndex = allQuotesCache.findIndex(q => q.id === quote.id);
+                            if (cacheIndex > -1) {
+                                allQuotesCache[cacheIndex].soldPO = soldPO;
+                            }
+                            
                         } catch (error) {
                             console.error(`Error updating Sold PO for quote ${quote.id}:`, error);
                         }
@@ -3453,6 +3460,15 @@ async function processAndSendExchanges() {
                     ✓ ${exchangeRows.length} exchange(s) created!<br>
                     <span style="font-size: 12px; opacity: 0.9;">Check AppSheet to confirm details.</span>
                 `;
+                
+                // *** FIX: Refresh the display to show updated POs ***
+                const searchTerm = document.getElementById('quoteSearchInput').value;
+                if (searchTerm) {
+                    filterAndDisplayQuotes(searchTerm);
+                } else {
+                    const displayQuotes = getQuotesToDisplay();
+                    renderHistoryTable(document.getElementById('searchHistoryBody'), displayQuotes, true);
+                }
                 
                 setTimeout(() => {
                     document.body.removeChild(loadingMessage);
