@@ -2955,7 +2955,7 @@ Continue?`;
                 const exchangeRow = {
                     "Sold to": quote.sold,
                     "PN Out": quote.pn || '',
-                    "Item Number Inventory OUT": "Enter Item Number"
+                    "Item Number Inventory OUT": ""
                 };
                 
                 if (exchangePrice && exchangePrice > 0) {
@@ -3072,7 +3072,7 @@ Continue?`;
                     const exchangeRow = {
                         "Sold to": quote.sold,
                         "PN Out": quote.pn || '',
-                        "Item Number Inventory OUT": "Enter Item Number"  // Required field with placeholder
+                        "Item Number Inventory OUT": ""  // No longer a required field
                     };
                     
                     if (outrightPrice !== null && outrightPrice > 0) {
