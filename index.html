@@ -1115,12 +1115,13 @@
                                         <th style="padding: 12px 8px; text-align: left; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Vendor</th>
                                         <th style="padding: 12px 8px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Exchange</th>
                                         <th style="padding: 12px 8px; text-align: right; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase;">Outright</th>
-                                        <th style="padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; width: 100px;">Actions</th>
+                                        <th style="padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; width: 60px;">Notes</th>
+                                        <th style="padding: 12px 8px; text-align: center; font-size: 12px; font-weight: 600; color: #6b7280; text-transform: uppercase; width: 40px;">Del</th>
                                     </tr>
                                 </thead>
                                 <tbody id="pnPricingTableBody">
                                     <tr>
-                                        <td colspan="5" style="padding: 20px; text-align: center; color: #9ca3af; font-size: 14px;">
+                                        <td colspan="6" style="padding: 20px; text-align: center; color: #9ca3af; font-size: 14px;">
                                             No vendor prices added yet. Click "+ Add Price" to add one.
                                         </td>
                                     </tr>
@@ -3768,6 +3769,15 @@ async function processAndSendExchanges() {
                     success: true
                 };
                 
+                console.log('=== SCRAPED PRICE DATA ===');
+                console.log('Part Number:', partNumber);
+                console.log('Purchase Type:', purchaseType);
+                console.log('Exchange Price:', prices.exchange);
+                console.log('Outright Price:', prices.outright);
+                console.log('OEM Exchange:', prices.oemExchange);
+                console.log('OEM Outright:', prices.oemOutright);
+                console.log('========================');
+                
                 await saveWebPriceToCache(partNumber, result);
                 
                 return result;
@@ -3968,8 +3978,78 @@ async function processAndSendExchanges() {
                     webPriceCache[partNumber] = priceData;
                     return;
                 }
+                
+                // Check if this is a new price or price has changed
+                const existingSnapshot = await database.ref(`webPriceCache/${partNumber}`).once('value');
+                const existingData = existingSnapshot.val();
+                
+                let priceChanged = false;
+                let oldPriceExists = false;
+                
+                if (existingData) {
+                    oldPriceExists = true;
+                    // Check if any price has changed
+                    if (existingData.exchangePrice !== priceData.exchangePrice ||
+                        existingData.outrightPrice !== priceData.outrightPrice ||
+                        existingData.oemExchangePrice !== priceData.oemExchangePrice ||
+                        existingData.oemOutrightPrice !== priceData.oemOutrightPrice) {
+                        priceChanged = true;
+                    }
+                } else {
+                    // First time logging price for this part number
+                    priceChanged = true;
+                }
+                
+                // Save the current price to cache
                 await database.ref(`webPriceCache/${partNumber}`).set(priceData);
                 webPriceCache[partNumber] = priceData;
+                
+                // If price changed, log it to the pricing history table
+                if (priceChanged && priceData.success) {
+                    // Get existing pricing notes to preserve manual entries
+                    const pricingNotesSnapshot = await database.ref(`pnPricingNotes/${partNumber}`).once('value');
+                    let pricingData = pricingNotesSnapshot.val() || { prices: [] };
+                    
+                    if (!pricingData.prices) {
+                        pricingData.prices = [];
+                    }
+                    
+                    // If there was an old price, log it first (so we can see what it changed FROM)
+                    if (oldPriceExists) {
+                        const oldPriceEntry = {
+                            date: existingData.lastUpdated || new Date().toISOString(),
+                            vendor: 'PartsSource (Previous)',
+                            exchangePrice: existingData.exchangePrice || null,
+                            outrightPrice: existingData.outrightPrice || null,
+                            oemExchangePrice: existingData.oemExchangePrice || null,
+                            oemOutrightPrice: existingData.oemOutrightPrice || null,
+                            notes: `Previous price before update on ${new Date(priceData.lastUpdated).toLocaleDateString()}`
+                        };
+                        pricingData.prices.push(oldPriceEntry);
+                    }
+                    
+                    // Log the new price
+                    const newPriceEntry = {
+                        date: priceData.lastUpdated,
+                        vendor: 'PartsSource',
+                        exchangePrice: priceData.exchangePrice || null,
+                        outrightPrice: priceData.outrightPrice || null,
+                        oemExchangePrice: priceData.oemExchangePrice || null,
+                        oemOutrightPrice: priceData.oemOutrightPrice || null,
+                        notes: oldPriceExists ? 'Price updated via web scrape' : 'Initial price from web scrape'
+                    };
+                    pricingData.prices.push(newPriceEntry);
+                    
+                    // Save back to database
+                    await database.ref(`pnPricingNotes/${partNumber}`).set(pricingData);
+                    console.log(`Price history logged for ${partNumber} in Pricing History table`);
+                    
+                    // Reload the pricing table if we're viewing this part number
+                    const currentPn = document.getElementById('partNumber')?.textContent;
+                    if (currentPn === partNumber) {
+                        await loadPnPricingNotes(partNumber);
+                    }
+                }
             } catch (error) {
                 console.warn('Could not save to database, using memory cache only:', error.message);
                 webPriceCache[partNumber] = priceData;
@@ -4034,27 +4114,17 @@ async function processAndSendExchanges() {
                 let html = '<div>';
                 html += `<p style="margin: 0 0 8px 0; color: #374151; font-weight: 600; font-size: 14px;">Purchase Type: ${cachedPrice.purchaseType}</p>`;
                 
+                // Always show all price categories with "Not Available" for missing prices
+                
                 // Refurbished Prices Section
-                if (cachedPrice.outrightPrice || cachedPrice.exchangePrice) {
-                    html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
-                    if (cachedPrice.exchangePrice) {
-                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(cachedPrice.exchangePrice)}</p>`;
-                    }
-                    if (cachedPrice.outrightPrice) {
-                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(cachedPrice.outrightPrice)}</p>`;
-                    }
-                }
+                html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
+                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${cachedPrice.exchangePrice ? formatPrice(cachedPrice.exchangePrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
+                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${cachedPrice.outrightPrice ? formatPrice(cachedPrice.outrightPrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
                 
                 // OEM New Prices Section
-                if (cachedPrice.oemOutrightPrice || cachedPrice.oemExchangePrice) {
-                    html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
-                    if (cachedPrice.oemExchangePrice) {
-                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(cachedPrice.oemExchangePrice)}</p>`;
-                    }
-                    if (cachedPrice.oemOutrightPrice) {
-                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(cachedPrice.oemOutrightPrice)}</p>`;
-                    }
-                }
+                html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
+                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${cachedPrice.oemExchangePrice ? formatPrice(cachedPrice.oemExchangePrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
+                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${cachedPrice.oemOutrightPrice ? formatPrice(cachedPrice.oemOutrightPrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
                 
                 const color = ageInDays > 7 ? '#f59e0b' : (ageInDays > 3 ? '#f97316' : '#22c55e');
                 html += `<p style="margin: 8px 0 0 0; color: ${color}; font-size: 12px; font-style: italic;">Updated: ${lastUpdated.toLocaleDateString()} (${ageText})</p>`;
@@ -4095,26 +4165,14 @@ async function processAndSendExchanges() {
                         }
                         
                         // Refurbished Prices
-                        if (lastPrice.outrightPrice || lastPrice.exchangePrice) {
-                            html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
-                            if (lastPrice.exchangePrice) {
-                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(lastPrice.exchangePrice)}</p>`;
-                            }
-                            if (lastPrice.outrightPrice) {
-                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(lastPrice.outrightPrice)}</p>`;
-                            }
-                        }
+                        html += `<p style="margin: 8px 0 4px 0; color: #2d7a7f; font-weight: 600; font-size: 13px;">Refurbished:</p>`;
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${lastPrice.exchangePrice ? formatPrice(lastPrice.exchangePrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${lastPrice.outrightPrice ? formatPrice(lastPrice.outrightPrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
                         
                         // OEM New Prices
-                        if (lastPrice.oemOutrightPrice || lastPrice.oemExchangePrice) {
-                            html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
-                            if (lastPrice.oemExchangePrice) {
-                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${formatPrice(lastPrice.oemExchangePrice)}</p>`;
-                            }
-                            if (lastPrice.oemOutrightPrice) {
-                                html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${formatPrice(lastPrice.oemOutrightPrice)}</p>`;
-                            }
-                        }
+                        html += `<p style="margin: 8px 0 4px 0; color: #f39237; font-weight: 600; font-size: 13px;">OEM New:</p>`;
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Exchange:</strong> ${lastPrice.oemExchangePrice ? formatPrice(lastPrice.oemExchangePrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
+                        html += `<p style="margin: 0 0 4px 0; padding-left: 12px; color: #374151; font-size: 14px;"><strong>Outright:</strong> ${lastPrice.oemOutrightPrice ? formatPrice(lastPrice.oemOutrightPrice) : '<span style="color: #9ca3af;">Not Available</span>'}</p>`;
                         
                         html += `<p style="margin: 8px 0 0 0; color: #92400e; font-size: 11px; font-style: italic;">Price cached from ${ageText}</p>`;
                         html += '</div>';
@@ -4152,7 +4210,7 @@ async function processAndSendExchanges() {
                 } else {
                     tableBody.innerHTML = `
                         <tr>
-                            <td colspan="5" style="padding: 20px; text-align: center; color: #9ca3af; font-size: 14px;">
+                            <td colspan="6" style="padding: 20px; text-align: center; color: #9ca3af; font-size: 14px;">
                                 No vendor prices added yet. Click "+ Add Price" to add one.
                             </td>
                         </tr>
@@ -4162,7 +4220,7 @@ async function processAndSendExchanges() {
                 console.error('Error loading PN pricing notes:', error);
                 tableBody.innerHTML = `
                     <tr>
-                        <td colspan="5" style="padding: 20px; text-align: center; color: #991b1b; font-size: 14px;">
+                        <td colspan="6" style="padding: 20px; text-align: center; color: #991b1b; font-size: 14px;">
                             Error loading prices
                         </td>
                     </tr>
@@ -4176,25 +4234,148 @@ async function processAndSendExchanges() {
             // Sort by date descending (newest first)
             const sortedPrices = prices.sort((a, b) => new Date(b.date) - new Date(a.date));
             
-            tableBody.innerHTML = sortedPrices.map((price, index) => {
-                const formattedDate = new Date(price.date).toLocaleDateString();
-                const exchangePrice = price.exchangePrice ? formatPrice(price.exchangePrice) : '—';
-                const outrightPrice = price.outrightPrice ? formatPrice(price.outrightPrice) : '—';
+            // Group prices by vendor (normalize vendor name for grouping)
+            const vendorGroups = {};
+            sortedPrices.forEach((price, index) => {
+                // Normalize vendor name (treat "PartsSource" and "PartsSource (Previous)" as same vendor)
+                const normalizedVendor = price.vendor.replace(' (Previous)', '').trim();
                 
-                return `
-                    <tr style="border-bottom: 1px solid #e5e7eb;">
-                        <td style="padding: 10px 8px; font-size: 13px; color: #374151;">${formattedDate}</td>
-                        <td style="padding: 10px 8px; font-size: 13px; color: #374151; font-weight: 500;">${price.vendor}</td>
-                        <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${exchangePrice}</td>
-                        <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${outrightPrice}</td>
-                        <td style="padding: 10px 8px; text-align: center;">
-                            ${price.notes ? `<button onclick="viewPriceNotes(${index})" style="background: none; border: none; color: #2d7a7f; cursor: pointer; font-size: 12px; padding: 4px 8px; text-decoration: underline;" title="${price.notes}">Notes</button>` : ''}
-                            <button onclick="deletePriceEntry(${index})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 18px; padding: 4px;" title="Delete">×</button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
+                if (!vendorGroups[normalizedVendor]) {
+                    vendorGroups[normalizedVendor] = [];
+                }
+                
+                vendorGroups[normalizedVendor].push({...price, originalIndex: index});
+            });
+            
+            let html = '';
+            
+            // Render each vendor group
+            Object.keys(vendorGroups).forEach(vendor => {
+                const vendorPrices = vendorGroups[vendor];
+                const mostRecent = vendorPrices[0]; // First one is most recent due to sorting
+                const priceCount = vendorPrices.length;
+                
+                if (priceCount === 1) {
+                    // Single price - render normally
+                    const price = mostRecent;
+                    const formattedDate = new Date(price.date).toLocaleDateString();
+                    const exchangePrice = price.exchangePrice ? formatPrice(price.exchangePrice) : '—';
+                    const outrightPrice = price.outrightPrice ? formatPrice(price.outrightPrice) : '—';
+                    
+                    let displayNotes = price.notes || '';
+                    if (price.oemExchangePrice || price.oemOutrightPrice) {
+                        const oemInfo = [];
+                        if (price.oemExchangePrice) oemInfo.push(`OEM Exch: ${formatPrice(price.oemExchangePrice)}`);
+                        if (price.oemOutrightPrice) oemInfo.push(`OEM Out: ${formatPrice(price.oemOutrightPrice)}`);
+                        displayNotes = displayNotes ? `${displayNotes} | ${oemInfo.join(', ')}` : oemInfo.join(', ');
+                    }
+                    
+                    const escapedNotes = displayNotes.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+                    
+                    html += `
+                        <tr style="border-bottom: 1px solid #e5e7eb;">
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151;">${formattedDate}</td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; font-weight: 500;">${price.vendor}</td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${exchangePrice}</td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${outrightPrice}</td>
+                            <td style="padding: 10px 8px; width: 60px; vertical-align: middle; text-align: center;">
+                                <div style="display: flex; align-items: center; justify-content: center; height: 24px;">
+                                    ${displayNotes ? `<button onclick="alert('${escapedNotes}')" style="background: none; border: none; color: #2d7a7f; cursor: pointer; font-size: 12px; padding: 0 8px; text-decoration: underline; line-height: 1; height: 24px; display: flex; align-items: center; justify-content: center;">Notes</button>` : '—'}
+                                </div>
+                            </td>
+                            <td style="padding: 10px 8px; width: 40px; vertical-align: middle; text-align: center;">
+                                <div style="display: flex; align-items: center; justify-content: center; height: 24px;">
+                                    ${!price.vendor.includes('PartsSource') ? `<button onclick="deletePriceEntry(${price.originalIndex})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 20px; padding: 0; line-height: 1; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="Delete">×</button>` : ''}
+                                </div>
+                            </td>
+                        </tr>
+                    `;
+                } else {
+                    // Multiple prices - render with dropdown
+                    const formattedDate = new Date(mostRecent.date).toLocaleDateString();
+                    const exchangePrice = mostRecent.exchangePrice ? formatPrice(mostRecent.exchangePrice) : '—';
+                    const outrightPrice = mostRecent.outrightPrice ? formatPrice(mostRecent.outrightPrice) : '—';
+                    const uniqueId = `vendor-${vendor.replace(/\s/g, '-')}-${Date.now()}`;
+                    
+                    html += `
+                        <tr style="border-bottom: 1px solid #e5e7eb; background: #f9fafb;">
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151;">${formattedDate}</td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; font-weight: 500;">
+                                <span style="cursor: pointer; display: inline-flex; align-items: center; gap: 6px;" onclick="toggleVendorHistory('${uniqueId}')">
+                                    <span id="${uniqueId}-arrow" style="display: inline-block; transition: transform 0.2s;">▶</span>
+                                    ${vendor} <span style="color: #2d7a7f; font-weight: 600;">(${priceCount} entries)</span>
+                                </span>
+                            </td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${exchangePrice}</td>
+                            <td style="padding: 10px 8px; font-size: 13px; color: #374151; text-align: right;">${outrightPrice}</td>
+                            <td style="padding: 10px 8px; text-align: center; color: #6b7280; font-size: 12px; width: 60px;">Latest</td>
+                            <td style="padding: 10px 8px; text-align: center; color: #6b7280; font-size: 12px; width: 40px;"></td>
+                        </tr>
+                    `;
+                    
+                    // Render all prices for this vendor as individual rows (not nested table)
+                    vendorPrices.forEach((price, idx) => {
+                        const histDate = new Date(price.date).toLocaleDateString();
+                        const histExchange = price.exchangePrice ? formatPrice(price.exchangePrice) : '—';
+                        const histOutright = price.outrightPrice ? formatPrice(price.outrightPrice) : '—';
+                        
+                        let displayNotes = price.notes || '';
+                        if (price.oemExchangePrice || price.oemOutrightPrice) {
+                            const oemInfo = [];
+                            if (price.oemExchangePrice) oemInfo.push(`OEM Exch: ${formatPrice(price.oemExchangePrice)}`);
+                            if (price.oemOutrightPrice) oemInfo.push(`OEM Out: ${formatPrice(price.oemOutrightPrice)}`);
+                            displayNotes = displayNotes ? `${displayNotes} | ${oemInfo.join(', ')}` : oemInfo.join(', ');
+                        }
+                        
+                        const escapedNotes = displayNotes.replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/"/g, '\\"').replace(/\n/g, '\\n');
+                        
+                        const rowStyle = idx === 0 ? 'background: #dbeafe;' : 'background: #f9fafb;';
+                        const labelStyle = idx === 0 ? 'color: #1e40af; font-weight: 600;' : 'color: #6b7280;';
+                        
+                        html += `
+                            <tr id="${uniqueId}-history-${idx}" style="display: none; border-bottom: 1px solid #e5e7eb; ${rowStyle}">
+                                <td style="padding: 10px 8px; font-size: 12px; color: #374151;">${histDate}</td>
+                                <td style="padding: 10px 8px; font-size: 11px; ${labelStyle}">${idx === 0 ? 'Latest' : `History ${priceCount - idx}`}</td>
+                                <td style="padding: 10px 8px; font-size: 12px; color: #374151; text-align: right;">${histExchange}</td>
+                                <td style="padding: 10px 8px; font-size: 12px; color: #374151; text-align: right;">${histOutright}</td>
+                                <td style="padding: 10px 8px; width: 60px; text-align: center;">
+                                    <div style="display: flex; align-items: center; justify-content: center; min-height: 24px;">
+                                        ${displayNotes ? `<button onclick="alert('${escapedNotes}')" style="background: none; border: none; color: #2d7a7f; cursor: pointer; font-size: 12px; padding: 0 8px; text-decoration: underline; line-height: 1; height: 24px; display: flex; align-items: center; justify-content: center;">Notes</button>` : '—'}
+                                    </div>
+                                </td>
+                                <td style="padding: 10px 8px; width: 40px; text-align: center;">
+                                    <div style="display: flex; align-items: center; justify-content: center; min-height: 24px;">
+                                        ${!price.vendor.includes('PartsSource') ? `<button onclick="deletePriceEntry(${price.originalIndex})" style="background: none; border: none; color: #ef4444; cursor: pointer; font-size: 20px; padding: 0; line-height: 1; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;" title="Delete">×</button>` : ''}
+                                    </div>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                }
+            });
+            
+            tableBody.innerHTML = html || `
+                <tr>
+                    <td colspan="6" style="padding: 20px; text-align: center; color: #9ca3af; font-size: 14px;">
+                        No vendor prices added yet. Click "+ Add Price" to add one.
+                    </td>
+                </tr>
+            `;
         }
+        
+        function toggleVendorHistory(uniqueId) {
+            const arrow = document.getElementById(`${uniqueId}-arrow`);
+            const allHistoryRows = document.querySelectorAll(`[id^="${uniqueId}-history-"]`);
+            
+            if (allHistoryRows.length > 0 && allHistoryRows[0].style.display === 'none') {
+                allHistoryRows.forEach(row => row.style.display = '');
+                arrow.style.transform = 'rotate(90deg)';
+            } else {
+                allHistoryRows.forEach(row => row.style.display = 'none');
+                arrow.style.transform = 'rotate(0deg)';
+            }
+        }
+
 
         function showAddPriceModal() {
             const modal = document.getElementById('addPriceModal');
