@@ -2144,7 +2144,13 @@ let siemensStockCache = null;
                 if (manualPnInput && !manualPnInput.dataset.listenerAdded) {
                     manualPnInput.dataset.listenerAdded = 'true';
                     manualPnInput.addEventListener('input', debounce(async (e) => {
-                        const pn = e.target.value.trim();
+                        let pn = e.target.value.trim(); // Get the part number
+                        
+                        // NEW: If it starts with 0, remove it
+                        if (pn.startsWith('0')) {
+                            pn = pn.substring(1);
+                        }
+                        
                         if (pn.length > 2) {
                             await searchPartsSourceForItemName(pn);
                         } else {
@@ -2168,7 +2174,71 @@ let siemensStockCache = null;
             };
         }
 
-        // Search Siemens Healthineers for item name based on part number
+        // NEW HELPER FUNCTION: Scrapes PartSource.com for the item name
+        async function scrapePartSourceForItemName(partNumber) {
+            if (!partNumber) return '';
+
+            const url = WEB_SCRAPING_CONFIG.BASE_URL + partNumber;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(url)}`;
+            
+            try {
+                const response = await fetch(proxyUrl);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}`);
+                }
+                
+                const html = await response.text();
+                
+                // Parse the HTML response
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                let itemName = '';
+
+                // Try to get from meta og:title (high quality)
+                const ogTitle = doc.querySelector('meta[property="og:title"]');
+                if (ogTitle) {
+                    itemName = ogTitle.getAttribute('content');
+                }
+
+                // If meta fails, try to get from first <h1>
+                if (!itemName) {
+                    const h1 = doc.querySelector('h1');
+                    if (h1) {
+                        itemName = h1.textContent;
+                    }
+                }
+                
+                // If h1 fails, try to get from first <h2>
+                if (!itemName) {
+                    const h2 = doc.querySelector('h2');
+                    if (h2) {
+                        itemName = h2.textContent;
+                    }
+                }
+
+                // Clean up the name
+                if (itemName) {
+                    itemName = itemName.replace(/\s+/g, ' ').trim();
+                    // Clean up common PartSource suffixes
+                    itemName = itemName.replace(/by Siemens Medical Solutions/i, '').trim();
+                    itemName = itemName.replace(/\| PartSource/i, '').trim();
+                    itemName = itemName.replace(/For Sale/i, '').trim(); // <-- THIS IS THE FIX
+                    
+                    if (itemName.length >= 3) {
+                        return itemName;
+                    }
+                }
+                
+                return ''; // No name found
+
+            } catch (error) {
+                console.error('Error scraping PartSource for name:', error);
+                return ''; // Return empty string on error
+            }
+        }
+
+        // UPDATED FUNCTION: Now uses the new PartSource scraper
         async function searchPartsSourceForItemName(partNumber) {
             const manualItemNameInput = document.getElementById('manualItemName');
             
@@ -2176,61 +2246,13 @@ let siemensStockCache = null;
                 // Show loading state
                 manualItemNameInput.value = 'Searching...';
                 
-                // Use the product page URL
-                const productUrl = `https://www.shop.siemens-healthineers.com/en-us/product/${partNumber}`;
+                // Call the new, reliable PartSource scraper
+                const itemName = await scrapePartSourceForItemName(partNumber);
                 
-                // Use CORS proxy to fetch page
-                const proxyUrl = 'https://api.allorigins.win/get?url=';
-                const response = await fetch(proxyUrl + encodeURIComponent(productUrl));
-                const data = await response.json();
-                
-                if (!data.contents) {
-                    manualItemNameInput.value = '';
-                    return;
-                }
-                
-                // Parse the HTML response
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(data.contents, 'text/html');
-                
-                let itemName = '';
-                
-                // Try to extract from <title> tag first (most reliable for server-rendered content)
-                const titleTag = doc.querySelector('title');
-                if (titleTag) {
-                    itemName = titleTag.textContent;
-                    // Title format is usually: "Product Name | Siemens Healthineers Shop"
-                    itemName = itemName.split('|')[0].trim();
-                }
-                
-                // If title doesn't work or seems wrong, try other methods
-                if (!itemName || itemName.toLowerCase().includes('siemens healthineers shop') || itemName.length < 3) {
-                    // Try meta og:title
-                    const ogTitle = doc.querySelector('meta[property="og:title"]');
-                    if (ogTitle) {
-                        itemName = ogTitle.getAttribute('content');
-                        itemName = itemName.split('|')[0].trim();
-                    }
-                }
-                
-                // Clean up the name
-                if (itemName) {
-                    itemName = itemName.replace(/\s+/g, ' ').trim();
-                    itemName = itemName.replace(/\s*[-|]\s*Siemens.*$/i, '');
-                    itemName = itemName.trim();
-                    
-                    // Validate - must be at least 3 characters and not just "Siemens Healthineers Shop"
-                    if (itemName.length >= 3 && !itemName.toLowerCase().includes('siemens healthineers shop')) {
-                        manualItemNameInput.value = itemName;
-                    } else {
-                        manualItemNameInput.value = '';
-                    }
-                } else {
-                    manualItemNameInput.value = '';
-                }
+                manualItemNameInput.value = itemName || '';
                 
             } catch (error) {
-                console.error('Error searching Siemens:', error);
+                console.error('Error searching PartSource for name:', error);
                 manualItemNameInput.value = '';
             }
         }
