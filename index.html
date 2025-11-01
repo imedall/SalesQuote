@@ -3762,9 +3762,17 @@ async function processAndSendExchanges() {
         }
 
         function extractPurchaseType(html) {
+            // First, try original regex
             const regex = /Purchase Type[:\s]+([A-Za-z]+)/i;
             const match = html.match(regex);
-            return match ? match[1].trim() : 'N/A';
+            if (match) return match[1].trim();
+            
+            // Fallback: check for OEM Outright text
+            if (html.includes("New OEM Original Outright")) {
+                return "Outright";
+            }
+            
+            return 'N/A';
         }
 
       function extractPrices(html, purchaseType) {
@@ -3775,95 +3783,114 @@ async function processAndSendExchanges() {
                 oemExchange: null
             };
             
-            // PRIMARY REGEX: Original pattern for lbl-bold price class
-            const priceRegex = /<span[^>]*class="[^"]*lbl-bold price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/gi;
-            const matches = [];
             let match;
+            const validMatches = [];
+
+            // --- START NEW LOGIC ---
             
-            while ((match = priceRegex.exec(html)) !== null) {
-                const priceValue = parseFloat(match[1].replace(/,/g, ''));
+            // 1. Find all STRUCK-OUT dollar amounts to exclude them
+            const struckPriceRegex = /(<del>|<s>|<strike|style="[^"]*text-decoration:\s*line-through[^"]*")[\s\S]*?\$\s*([\d,]+\.?\d*)/gi;
+            const struckMatches = new Set();
+            while ((match = struckPriceRegex.exec(html)) !== null) {
+                const priceValue = parseFloat(match[2].replace(/,/g, ''));
                 if (!isNaN(priceValue)) {
-                    matches.push(priceValue);
+                    struckMatches.add(priceValue);
+                }
+            }
+
+            // 2. Try to find "Your price: $..."
+            const yourPriceRegex = /Your price:[\s\S]*?\$\s*([\d,]+\.?\d*)/gi;
+            while ((match = yourPriceRegex.exec(html)) !== null) {
+                const priceValue = parseFloat(match[1].replace(/,/g, ''));
+                if (!isNaN(priceValue) && priceValue > 0) {
+                    if (!struckMatches.has(priceValue)) { // Double-check it's not struck
+                        validMatches.push(priceValue);
+                    }
                 }
             }
             
-            // FALLBACK REGEX 1: Look for any price-related class with dollar amounts
-            if (matches.length === 0) {
-                const fallbackRegex1 = /<span[^>]*class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/gi;
-                while ((match = fallbackRegex1.exec(html)) !== null) {
+            // 3. If "Your price" not found, try finding prices in "price" spans
+            if (validMatches.length === 0) {
+                const priceRegex = /<span[^>]*class="[^"]*price[^"]*"[^>]*>\s*\$?([\d,]+\.?\d*)/gi;
+                while ((match = priceRegex.exec(html)) !== null) {
                     const priceValue = parseFloat(match[1].replace(/,/g, ''));
                     if (!isNaN(priceValue) && priceValue > 0) {
-                        matches.push(priceValue);
+                        if (!struckMatches.has(priceValue)) {
+                            validMatches.push(priceValue);
+                        }
                     }
                 }
             }
-            
-            // FALLBACK REGEX 2: Look for dollar signs followed by numbers anywhere in spans
-            if (matches.length === 0) {
-                const fallbackRegex2 = /<span[^>]*>\s*\$\s*([\d,]+\.?\d*)/gi;
-                while ((match = fallbackRegex2.exec(html)) !== null) {
+
+            // 4. If STILL nothing, try finding any non-struck, non-savings dollar amount
+            if (validMatches.length === 0) {
+                // Find all SAVINGS dollar amounts to exclude them
+                const savingsPriceRegex = /Savings[:\s]*\$?\s*([\d,]+\.?\d*)/gi;
+                const savingsMatches = new Set();
+                while ((match = savingsPriceRegex.exec(html)) !== null) {
                     const priceValue = parseFloat(match[1].replace(/,/g, ''));
-                    if (!isNaN(priceValue) && priceValue > 10) {
-                        matches.push(priceValue);
+                    if (!isNaN(priceValue)) {
+                        savingsMatches.add(priceValue);
                     }
                 }
-            }
-            
-            // FALLBACK REGEX 3: Look for text patterns like "Price: $1,234.56" or "USD $1,234"
-            if (matches.length === 0) {
-                const fallbackRegex3 = /(?:price|cost|USD|your price)[:\s]*\$?\s*([\d,]+\.?\d*)/gi;
-                while ((match = fallbackRegex3.exec(html)) !== null) {
+
+                // Find ALL dollar amounts
+                const allPriceRegex = /\$\s*([\d,]+\.?\d*)/gi;
+                const allMatches = new Set();
+                while ((match = allPriceRegex.exec(html)) !== null) {
                     const priceValue = parseFloat(match[1].replace(/,/g, ''));
-                    if (!isNaN(priceValue) && priceValue > 10) {
-                        matches.push(priceValue);
+                    if (!isNaN(priceValue) && priceValue > 0) { // Ignore 0.00
+                        allMatches.add(priceValue);
                     }
                 }
-            }
-            
-            // FALLBACK REGEX 4: Look in div elements with price-related classes
-            if (matches.length === 0) {
-                const fallbackRegex4 = /<div[^>]*class="[^"]*price[^"]*"[^>]*>[^<]*\$?\s*([\d,]+\.?\d*)/gi;
-                while ((match = fallbackRegex4.exec(html)) !== null) {
-                    const priceValue = parseFloat(match[1].replace(/,/g, ''));
-                    if (!isNaN(priceValue) && priceValue > 10) {
-                        matches.push(priceValue);
+
+                allMatches.forEach(price => {
+                    if (!struckMatches.has(price) && !savingsMatches.has(price) && price !== 1.00) {
+                        validMatches.push(price);
                     }
-                }
+                });
+            }
+            // --- END NEW LOGIC ---
+
+            console.log('Price extraction - Found valid matches:', validMatches);
+            
+            // Also, let's use the better purchase type
+            let extractedPurchaseType = purchaseType;
+            if (purchaseType === 'N/A') {
+                 if (html.includes("New OEM Original Outright")) {
+                    extractedPurchaseType = "Outright";
+                 }
             }
             
-            console.log('Price extraction - Found matches:', matches);
-            console.log('Purchase type:', purchaseType);
+            console.log('Purchase type:', extractedPurchaseType);
             
             // Sort prices to identify refurb vs OEM (typically refurb is lower)
-            const sortedMatches = [...matches].sort((a, b) => a - b);
+            const sortedMatches = [...new Set(validMatches)].sort((a, b) => a - b); // Use Set to remove duplicates
             
-            if (purchaseType.toUpperCase() === 'EXCHANGE') {
-                // For EXCHANGE type, expect up to 4 prices:
-                // [0] = Refurb Exchange (lowest)
-                // [1] = Refurb Outright
-                // [2] = OEM Exchange
-                // [3] = OEM Outright (highest)
+            // Specific rule for "New OEM Original Outright"
+            if (html.includes("New OEM Original Outright")) {
+                if (sortedMatches.length > 0) {
+                    // The only price listed is OEM Outright.
+                    prices.oemOutright = sortedMatches[0]; // Should be $171.50
+                }
+            }
+            // Original logic for Exchange / Outright types
+            else if (extractedPurchaseType.toUpperCase() === 'EXCHANGE') {
                 if (sortedMatches.length >= 1) prices.exchange = sortedMatches[0];
                 if (sortedMatches.length >= 2) prices.outright = sortedMatches[1];
                 if (sortedMatches.length >= 3) prices.oemExchange = sortedMatches[2];
                 if (sortedMatches.length >= 4) prices.oemOutright = sortedMatches[3];
-            } else if (purchaseType.toUpperCase() === 'OUTRIGHT') {
-                // For OUTRIGHT type, expect up to 2 prices:
-                // [0] = Refurb Outright (lower)
-                // [1] = OEM Outright (higher)
+            } else if (extractedPurchaseType.toUpperCase() === 'OUTRIGHT') {
                 if (sortedMatches.length >= 1) prices.outright = sortedMatches[0];
                 if (sortedMatches.length >= 2) prices.oemOutright = sortedMatches[1];
              } else {
-                // Unknown type - intelligently assign based on number of prices found
+                // Unknown type ("N/A")
                 if (sortedMatches.length === 1) {
-                    // Only 1 price - assume it's refurb outright
                     prices.outright = sortedMatches[0];
                 } else if (sortedMatches.length === 2) {
-                    // 2 prices - assume refurb and OEM outright
                     prices.outright = sortedMatches[0];
                     prices.oemOutright = sortedMatches[1];
                 } else if (sortedMatches.length >= 3) {
-                    // 3+ prices - assume: refurb outright, OEM exchange, OEM outright
                     prices.outright = sortedMatches[0];
                     prices.oemExchange = sortedMatches[1];
                     prices.oemOutright = sortedMatches[2];
